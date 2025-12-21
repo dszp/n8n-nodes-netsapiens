@@ -1,6 +1,6 @@
 {
     "name": "n8n-nodes-netsapiens",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "n8n Community Node for connecting to and querying NetSapiens-based VoIP phone switch/PBX. ",
     "license": "MIT",
     "homepage": "",
@@ -19,15 +19,15 @@
         "type": "git",
         "url": "https://github.com/dszp/n8n-nodes-netsapiens.git"
     },
-   "scripts": {
-		"generate": "node tools/generate-openapi.js",
-		"build": "npm run generate && n8n-node build",
-		"build:watch": "tsc --watch",
-		"dev": "n8n-node dev",
-		"lint": "n8n-node lint",
-		"lint:fix": "n8n-node lint --fix",
-		"release": "n8n-node release"
-	},
+    "scripts": {
+        "generate": "node tools/generate-openapi.js",
+        "build": "npm run generate && n8n-node build",
+        "build:watch": "tsc --watch",
+        "dev": "n8n-node dev",
+        "lint": "n8n-node lint",
+        "lint:fix": "n8n-node lint --fix",
+        "release": "n8n-node release"
+    },
     "files": [
         "dist"
     ],
