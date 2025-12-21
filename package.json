@@ -1,6 +1,6 @@
 {
     "name": "n8n-nodes-netsapiens",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "description": "n8n Community Node for connecting to and querying NetSapiens-based VoIP phone switch/PBX. ",
     "license": "MIT",
     "homepage": "",
@@ -13,7 +13,7 @@
     ],
     "author": {
         "name": "David Szpunar",
-        "email": "dszp@users.noreply.github.com"
+        "url": "https://david.szpunar.com"
     },
     "repository": {
         "type": "git",
