@@ -16,7 +16,27 @@ NetSapiens is a Voice over IP (VoIP) phone switch software provider that provide
 
 ## Installation
 
+## Installation
+
+### n8n Cloud
+
+Not yet verified for use with n8n Cloud.
+
+### Self-Hosted n8n
+
 Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in the n8n community nodes documentation.
+
+```bash
+# From your n8n installation directory
+npm install n8n-nodes-netsapiens
+# Restart n8n
+```
+
+You can install this node as a community node on your self-hosted [n8n](https://n8n.io) instance from the UI (if community nodes are enabled) since it's [published to npm](https://www.npmjs.com/package/n8n-nodes-netsapiens) as `n8n-nodes-netsapiens`, with the following steps:
+
+1. In your n8n instance, go to **Settings** → **Community Nodes**
+2. Click **Install** and enter: `n8n-nodes-netsapiens`
+3. Click **Install** to add the node to your instance
 
 ## Operations
 
