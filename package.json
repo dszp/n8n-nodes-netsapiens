@@ -1,11 +1,15 @@
 {
     "name": "n8n-nodes-netsapiens",
     "version": "0.1.0",
-    "description": "NetSapiens nodes for n8n",
+    "description": "n8n Community Node for connecting to and querying NetSapiens-based VoIP phone switch/PBX. ",
     "license": "MIT",
     "homepage": "",
     "keywords": [
-        "n8n-community-node-package"
+        "n8n-community-node-package",
+        "n8n",
+        "netsapiens",
+        "voip",
+        "pbx"
     ],
     "author": {
         "name": "David Szpunar",
@@ -22,8 +26,7 @@
 		"dev": "n8n-node dev",
 		"lint": "n8n-node lint",
 		"lint:fix": "n8n-node lint --fix",
-		"release": "n8n-node release",
-		"prepublishOnly": "n8n-node prerelease"
+		"release": "n8n-node release"
 	},
     "files": [
         "dist"
