@@ -6,15 +6,22 @@ NetSapiens is a Voice over IP (VoIP) phone switch software provider that provide
 
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/sustainable-use-license/) workflow automation platform.
 
-[Installation](#installation)
-[Operations](#operations)
-[Credentials](#credentials)
-[Compatibility](#compatibility)
-[Usage](#usage)
-[Resources](#resources)
-[Version history](#version-history)
-
-## Installation
+- [n8n-nodes-netsapiens](#n8n-nodes-netsapiens)
+	- [Installation](#installation)
+		- [n8n Cloud](#n8n-cloud)
+		- [Self-Hosted n8n](#self-hosted-n8n)
+	- [Operations](#operations)
+	- [Credentials](#credentials)
+	- [Compatibility](#compatibility)
+	- [Usage](#usage)
+		- [Basic usage](#basic-usage)
+		- [Raw request](#raw-request)
+		- [Development](#development)
+	- [Resources](#resources)
+	- [Changelog](#changelog)
+	- [TODO](#todo)
+	- [Attribution](#attribution)
+	- [License](#license)
 
 ## Installation
 
@@ -110,13 +117,6 @@ From `n8n-nodes-netsapiens/`:
 - `npm run build` runs code generation and builds the node.
 - `npm run dev` runs the node in development mode directly, launching n8n, or:
 - Use `npm link` to link the node to n8n (and then `npm link n8n-nodes-netsapiens` in your n8n instance `config` directory and restart n8n).
-
-### Notes / open questions
-
-Please confirm your preference for the following behaviors:
-
-- Whether Authentication resources/actions should be hidden by default in the node UI.
-- Whether `Raw -> Request` should remain the default resource/operation (or whether a specific resource/operation should be the default).
 
 ## Resources
 
