@@ -1,0 +1,105 @@
+name: Publish to npm (GitHub Release)
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to publish (e.g. v1.0.0)"
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: NPM
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Resolve release tag
+        id: vars
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "release_tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "release_tag=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Using tag: $(cat $GITHUB_OUTPUT | sed -n 's/^release_tag=//p')"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.vars.outputs.release_tag }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Show npm version
+        run: npm --version
+
+      - name: Upgrade npm
+        run: npm install -g npm@latest
+
+      - name: Show npm version (after upgrade)
+        run: npm --version
+
+      - name: Confirm OIDC environment is available
+        run: |
+          node -e "console.log('ACTIONS_ID_TOKEN_REQUEST_URL present:', Boolean(process.env.ACTIONS_ID_TOKEN_REQUEST_URL))"
+          node -e "console.log('ACTIONS_ID_TOKEN_REQUEST_TOKEN present:', Boolean(process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN))"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify tag matches package.json version
+        env:
+          RELEASE_TAG: ${{ steps.vars.outputs.release_tag }}
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION=${RELEASE_TAG#v}
+          echo "Release tag: ${RELEASE_TAG}"
+          echo "package.json version: ${PKG_VERSION}"
+          if [ "${TAG_VERSION}" != "${PKG_VERSION}" ]; then
+            echo "Tag version (${TAG_VERSION}) does not match package.json version (${PKG_VERSION})."
+            exit 1
+          fi
+
+      - name: Build
+        run: npm run build
+
+      - name: Ensure Trusted Publishing (no npm token auth)
+        run: |
+          rm -f ~/.npmrc
+          npm config set registry https://registry.npmjs.org/
+          npm config delete //registry.npmjs.org/:_authToken || true
+          npm config delete //registry.npmjs.org/:_auth || true
+          unset NODE_AUTH_TOKEN || true
+          unset NPM_TOKEN || true
+
+      - name: Diagnostics (auth + OIDC)
+        run: |
+          echo "registry: $(npm config get registry)"
+          node -e "console.log('ACTIONS_ID_TOKEN_REQUEST_URL present:', Boolean(process.env.ACTIONS_ID_TOKEN_REQUEST_URL))"
+          node -e "console.log('ACTIONS_ID_TOKEN_REQUEST_TOKEN present:', Boolean(process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN))"
+          node -e "console.log('NODE_AUTH_TOKEN present:', Boolean(process.env.NODE_AUTH_TOKEN))"
+          AUTH_TOKEN=$(npm config get //registry.npmjs.org/:_authToken || true)
+          if [ -n "$AUTH_TOKEN" ] && [ "$AUTH_TOKEN" != "undefined" ] && [ "$AUTH_TOKEN" != "null" ]; then
+            echo "npm config has //registry.npmjs.org/:_authToken: true"
+          else
+            echo "npm config has //registry.npmjs.org/:_authToken: false"
+          fi
+
+      - name: Publish
+        run: npm publish --provenance --access public
+        
