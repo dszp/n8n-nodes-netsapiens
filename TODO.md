@@ -6,8 +6,6 @@ Nothing in this file is a commitment. Items may change, be re-prioritized, or be
 
 ## Packaging and documentation
 
-- Replace temporary icons (`nodes/NetSapiens/NetSapiens.svg` and `nodes/NetSapiens/NetSapiens.dark.svg`) with the official NetSapiens SVG logo(s).
-- Decide whether to ship and/or reference a PNG logo (a `nodes/NetSapiens/NetSapiens.png` exists currently).
 - Update `package.json` `repository.url` to the real GitHub repository URL.
 - Update the credential `documentationUrl` in `credentials/NetSapiensApi.credentials.ts` to the final documentation URL.
 
