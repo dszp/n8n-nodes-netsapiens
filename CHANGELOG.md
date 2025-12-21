@@ -4,6 +4,12 @@ All notable changes to the n8n-nodes-netsapiens project will be documented in th
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.3] - 2025-12-21
+
+### Changed
+
+- Added author email to metadata.
+
 ## [0.1.2] - 2025-12-21
 
 ### Changed
