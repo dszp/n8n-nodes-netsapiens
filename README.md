@@ -6,15 +6,23 @@ NetSapiens is a Voice over IP (VoIP) phone switch software provider that provide
 
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/sustainable-use-license/) workflow automation platform.
 
-[Installation](#installation)
-[Operations](#operations)
-[Credentials](#credentials)
-[Compatibility](#compatibility)
-[Usage](#usage)
-[Resources](#resources)
-[Version history](#version-history)
-
-## Installation
+- [n8n-nodes-netsapiens](#n8n-nodes-netsapiens)
+	- [Installation](#installation)
+		- [n8n Cloud](#n8n-cloud)
+		- [Self-Hosted n8n](#self-hosted-n8n)
+	- [Operations](#operations)
+	- [Credentials](#credentials)
+	- [Compatibility](#compatibility)
+	- [Usage](#usage)
+		- [Basic usage](#basic-usage)
+		- [Raw request](#raw-request)
+		- [Development](#development)
+		- [Notes / open questions](#notes--open-questions)
+	- [Resources](#resources)
+	- [Changelog](#changelog)
+	- [TODO](#todo)
+	- [Attribution](#attribution)
+	- [License](#license)
 
 ## Installation
 
