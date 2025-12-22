@@ -85,6 +85,34 @@ const offsetPaginatedOperationIds = new Set(
 	operations.filter((op) => isOffsetPaginationOperation(op)).map((op) => op.id),
 );
 
+function isLimitOnlyPaginationOperation(op: (typeof operations)[number]): boolean {
+	if (op.method !== 'GET') {
+		return false;
+	}
+
+	const limit = op.parameters.find((p) => p.in === 'query' && p.name === 'limit');
+	if (!limit) {
+		return false;
+	}
+
+	const start = op.parameters.find((p) => p.in === 'query' && p.name === 'start');
+	if (start) {
+		return false;
+	}
+
+	if (limit.schemaType === 'string') {
+		return false;
+	}
+
+	return true;
+}
+
+const limitOnlyPaginatedOperationIds = new Set(
+	operations.filter((op) => isLimitOnlyPaginationOperation(op)).map((op) => op.id),
+);
+
+const limitOnlyReturnAllLimit = 100000;
+
 function paginationParamName(operationId: string, name: string): string {
 	return `${operationId}__pagination__${name}`;
 }
@@ -363,6 +391,54 @@ function getFirstStringField(value: Record<string, unknown>, keys: string[]): st
 	return '';
 }
 
+function formatUserLabel(value: Record<string, unknown>, userId: string): string {
+	const serviceCode = getFirstStringField(value, ['service-code', 'service_code', 'serviceCode']);
+	const subscriberType = getFirstStringField(value, [
+		'subscriber-type',
+		'subscriber_type',
+		'subscriberType',
+		'type',
+	]);
+	const loginUsername = getFirstStringField(value, [
+		'login-username',
+		'login_username',
+		'loginUsername',
+		'login',
+		'username',
+	]);
+	const firstName = getFirstStringField(value, [
+		'name-first-name',
+		'name_first_name',
+		'firstName',
+		'first_name',
+	]);
+	const lastName = getFirstStringField(value, [
+		'name-last-name',
+		'name_last_name',
+		'lastName',
+		'last_name',
+	]);
+
+	const fullName = [firstName, lastName].filter(Boolean).join(' ');
+
+	if (serviceCode) {
+		return `${userId} - ${serviceCode.toUpperCase()}`;
+	}
+
+	const parts = [userId];
+	if (subscriberType) {
+		parts.push(subscriberType);
+	}
+	if (loginUsername) {
+		parts.push(loginUsername);
+	}
+	if (fullName) {
+		parts.push(fullName);
+	}
+
+	return parts.join(' - ');
+}
+
 function buildOperationParameterFields(): INodeProperties[] {
 	const fields: INodeProperties[] = [];
 
@@ -409,6 +485,115 @@ function buildOperationParameterFields(): INodeProperties[] {
 				},
 			};
 			const fieldName = parameterName(op.id, param.in, param.name);
+
+			if (op.id === 'GetAuditlog' && param.in === 'query' && param.name === 'target-domain') {
+				fields.push({
+					displayName: 'Target Domain',
+					name: fieldName,
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+					modes: [
+						{
+							displayName: 'Target Domain',
+							name: 'list',
+							type: 'list',
+							placeholder: 'Select a domain...',
+							typeOptions: {
+								searchListMethod: 'searchDomains',
+								searchable: true,
+								searchFilterRequired: false,
+							},
+						},
+						{
+							displayName: 'Target Domain',
+							name: 'name',
+							type: 'string',
+							placeholder: 'e.g. example.com',
+						},
+					],
+				});
+				continue;
+			}
+
+			if (op.id === 'GetAuditlog' && param.in === 'query' && param.name === 'target-user') {
+				fields.push({
+					displayName: 'Target User',
+					name: fieldName,
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+					modes: [
+						{
+							displayName: 'Target User',
+							name: 'list',
+							type: 'list',
+							placeholder: 'Select a user...',
+							typeOptions: {
+								searchListMethod: 'searchUsersForDomain',
+								searchable: true,
+								searchFilterRequired: false,
+							},
+						},
+						{
+							displayName: 'Target User',
+							name: 'id',
+							type: 'string',
+							placeholder: 'e.g. 1001',
+						},
+					],
+				});
+				continue;
+			}
+
+			if (
+				op.id === 'GetAuditlog' &&
+				param.in === 'query' &&
+				(param.name === 'datetime-start' || param.name === 'datetime-end')
+			) {
+				fields.push({
+					displayName: formatParameterLabel(param.name),
+					name: fieldName,
+					type: 'dateTime',
+					default: '',
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+				});
+				continue;
+			}
+
+			if (limitOnlyPaginatedOperationIds.has(op.id) && param.in === 'query' && param.name === 'limit') {
+				const returnAllName = paginationParamName(op.id, 'returnAll');
+				fields.push({
+					displayName: 'Return All Results',
+					name: returnAllName,
+					type: 'boolean',
+					default: true,
+					displayOptions: fieldDisplayOptions,
+					description: 'Whether to fetch all results by increasing the API limit',
+				});
+				fields.push({
+					displayName: formatParameterLabel(param.name),
+					name: fieldName,
+					type: guessFieldType(param.schemaType),
+					default: '',
+					required: param.required,
+					displayOptions: {
+						show: {
+							resource: [effectiveResource],
+							operation: [op.id],
+							[returnAllName]: [false],
+						},
+					},
+					description: param.description,
+				});
+				continue;
+			}
 
 			if (isDomainParam) {
 				fields.push({
@@ -915,46 +1100,7 @@ export class NetSapiens implements INodeType {
 						continue;
 					}
 
-					const serviceCode = getFirstStringField(value, [
-						'service-code',
-						'service_code',
-						'serviceCode',
-					]);
-					const loginUsername = getFirstStringField(value, [
-						'login-username',
-						'login_username',
-						'loginUsername',
-						'login',
-						'username',
-					]);
-					const firstName = getFirstStringField(value, [
-						'name-first-name',
-						'name_first_name',
-						'firstName',
-						'first_name',
-					]);
-					const lastName = getFirstStringField(value, [
-						'name-last-name',
-						'name_last_name',
-						'lastName',
-						'last_name',
-					]);
-
-					const fullName = [firstName, lastName].filter(Boolean).join(' ');
-
-					let label = '';
-					if (serviceCode) {
-						label = `${userId} - ${serviceCode.toUpperCase()}`;
-					} else {
-						const parts = [userId];
-						if (loginUsername) {
-							parts.push(loginUsername);
-						}
-						if (fullName) {
-							parts.push(fullName);
-						}
-						label = parts.join(' - ');
-					}
+					const label = formatUserLabel(value, userId);
 
 					options.push({
 						name: label,
@@ -1080,12 +1226,20 @@ export class NetSapiens implements INodeType {
 					return { results: [] };
 				}
 
-				const domainParamName = `${operationId}__path__domain`;
+				const domainParamNames = [
+					parameterName(operationId, 'path', 'domain'),
+					parameterName(operationId, 'query', 'target-domain'),
+				];
 				let domainParam: unknown;
-				try {
-					domainParam = this.getCurrentNodeParameter(domainParamName, { rawExpressions: true });
-				} catch {
-					return { results: [] };
+				for (const domainParamName of domainParamNames) {
+					try {
+						domainParam = this.getCurrentNodeParameter(domainParamName, { rawExpressions: true });
+					} catch {
+						continue;
+					}
+					if (domainParam !== undefined && domainParam !== null && domainParam !== '') {
+						break;
+					}
 				}
 				const domain = extractLocatorValue(domainParam).trim();
 				if (!domain || isExpressionLikeValue(domain)) {
@@ -1135,29 +1289,7 @@ export class NetSapiens implements INodeType {
 								continue;
 							}
 
-							const loginUsername = getFirstStringField(value, [
-								'loginUsername',
-								'username',
-								'login',
-							]);
-							const firstName = getFirstStringField(value, ['firstName', 'firstname', 'givenName']);
-							const lastName = getFirstStringField(value, ['lastName', 'lastname', 'surname', 'familyName']);
-							const serviceCode = getFirstStringField(value, ['serviceCode', 'service', 'type']);
-
-							const fullName = [firstName, lastName].filter(Boolean).join(' ');
-							let label = '';
-							if (serviceCode) {
-								label = `${userId} - ${serviceCode.toUpperCase()}`;
-							} else {
-								const parts = [userId];
-								if (loginUsername) {
-									parts.push(loginUsername);
-								}
-								if (fullName) {
-									parts.push(fullName);
-								}
-								label = parts.join(' - ');
-							}
+							const label = formatUserLabel(value, userId);
 
 							next.push({ name: label, value: userId });
 						}
@@ -1298,7 +1430,12 @@ export class NetSapiens implements INodeType {
 						'',
 					) as unknown;
 					const effectiveValue =
-						param.name === 'domain' || param.name === 'user' ? (extractLocatorValue(value) || '') : value;
+						param.name === 'domain' ||
+						param.name === 'user' ||
+						param.name === 'target-domain' ||
+						param.name === 'target-user'
+							? (extractLocatorValue(value) || '')
+							: value;
 
 					if (param.in === 'path') {
 						pathParams[param.name] = effectiveValue;
@@ -1329,6 +1466,15 @@ export class NetSapiens implements INodeType {
 							this.getNodeParameter(`${operation.id}__body`, itemIndex, '{}') as unknown,
 						)
 					: undefined;
+
+				if (limitOnlyPaginatedOperationIds.has(operation.id) && operation.method === 'GET') {
+					const returnAll = Boolean(
+						this.getNodeParameter(paginationParamName(operation.id, 'returnAll'), itemIndex, true),
+					);
+					if (returnAll) {
+						queryParams.limit = limitOnlyReturnAllLimit;
+					}
+				}
 
 				if (offsetPaginatedOperationIds.has(operation.id) && operation.method === 'GET') {
 					const returnAll = Boolean(

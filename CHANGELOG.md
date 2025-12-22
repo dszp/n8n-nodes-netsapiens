@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Updated bundled OpenAPI spec used for generated operations.
 - Added generic support for `start`/`limit` pagination by defaulting to return all results, while allowing manual paging controls.
 - Updated domain dropdown option loading to page through `/domains` when pagination is required.
+- Added generic support for limit-only operations (query `limit` without `start`) by defaulting to return all results while allowing manual limits.
+- Customized Audit Log "Read Audit Log" operation fields (target domain/user dropdowns with manual fallback, and datetime start/end inputs).
+- Improved user dropdown/search labels to include more identifying details when available.
 
 ## [0.1.3] - 2025-12-21
 
