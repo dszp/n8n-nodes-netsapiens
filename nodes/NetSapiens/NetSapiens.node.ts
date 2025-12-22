@@ -28,11 +28,93 @@ type CacheEntry = {
 	options: INodePropertyOptions[];
 };
 
+type ApiVersionCacheEntry = {
+	fetchedAtMs: number;
+	major?: number;
+	raw?: string;
+};
+
 const resellersCacheByBaseUrl = new Map<string, CacheEntry>();
 const domainsCacheByBaseUrl = new Map<string, CacheEntry>();
 const usersCacheByBaseUrlAndDomain = new Map<string, CacheEntry>();
+const apiVersionCacheByBaseUrl = new Map<string, ApiVersionCacheEntry>();
 
 const loadOptionsTtlMs = 15 * 60 * 1000;
+
+function parseApiVersionMajor(version: unknown): number | undefined {
+	if (typeof version === 'number' && Number.isFinite(version)) {
+		return Math.trunc(version);
+	}
+	if (typeof version !== 'string') {
+		return undefined;
+	}
+	const trimmed = version.trim();
+	if (!trimmed) {
+		return undefined;
+	}
+	const majorText = trimmed.split('.')[0];
+	const major = Number.parseInt(majorText, 10);
+	return Number.isFinite(major) ? major : undefined;
+}
+
+async function getServerApiVersion(
+	context: IExecuteFunctions,
+	baseUrl: string,
+	options?: { refresh?: boolean },
+): Promise<ApiVersionCacheEntry> {
+	const refresh = Boolean(options?.refresh);
+	const now = Date.now();
+	const cached = apiVersionCacheByBaseUrl.get(baseUrl);
+	if (!refresh && cached && now - cached.fetchedAtMs < loadOptionsTtlMs) {
+		return cached;
+	}
+
+	try {
+		const url = `${baseUrl}/version`;
+		const response = await netSapiensRequest(context, {
+			method: toHttpRequestMethod('GET'),
+			url,
+		});
+		const data = response as Record<string, unknown>;
+		const raw =
+			(typeof data?.apiversion === 'string' || typeof data?.apiversion === 'number')
+				? String(data.apiversion)
+				: (typeof data?.apiVersion === 'string' || typeof data?.apiVersion === 'number')
+					? String(data.apiVersion)
+					: (typeof data?.['api-version'] === 'string' || typeof data?.['api-version'] === 'number')
+						? String(data['api-version'])
+						: undefined;
+
+		const major = parseApiVersionMajor(raw);
+		const entry: ApiVersionCacheEntry = { fetchedAtMs: now, major, raw };
+		apiVersionCacheByBaseUrl.set(baseUrl, entry);
+		return entry;
+	} catch {
+		const entry: ApiVersionCacheEntry = { fetchedAtMs: now };
+		apiVersionCacheByBaseUrl.set(baseUrl, entry);
+		return entry;
+	}
+}
+
+function getErrorText(error: unknown): string {
+	if (!error) {
+		return '';
+	}
+	if (typeof error === 'string') {
+		return error;
+	}
+	if (error instanceof Error) {
+		return error.message;
+	}
+	if (typeof error === 'object') {
+		const value = error as Record<string, unknown>;
+		const parts = [value.errorMessage, value.errorDescription, value.message]
+			.filter((v): v is string => typeof v === 'string' && Boolean(v.trim()))
+			.map((v) => v.trim());
+		return parts.join(' | ');
+	}
+	return '';
+}
 
 function isExpressionLikeValue(value: string): boolean {
 	const trimmed = value.trim();
@@ -1394,6 +1476,23 @@ export class NetSapiens implements INodeType {
 					throw new NodeOperationError(this.getNode(), `Unknown operation: ${operationId}`, { itemIndex });
 				}
 
+				if (operation.id === 'GetAuditlog') {
+					const shouldRefresh = Boolean(this.getNodeParameter('refreshOptions', itemIndex, false));
+					const apiVersion = await getServerApiVersion(this, baseUrl, { refresh: shouldRefresh });
+					if (typeof apiVersion.major === 'number' && apiVersion.major < 45) {
+						const raw = apiVersion.raw ? ` (${apiVersion.raw})` : '';
+						throw new NodeOperationError(
+							this.getNode(),
+							`Audit Log is not supported by this NetSapiens server (API version < 45${raw}).`,
+							{
+								itemIndex,
+								description:
+									'Your server does not implement the Audit Log endpoint used by this operation. Upgrade the server/API to version 45+ or remove this operation from the workflow.',
+							},
+						);
+					}
+				}
+
 				const override = operationOverrides[operation.id];
 				const effectiveResource = override?.resource ?? operation.resource;
 
@@ -1535,6 +1634,25 @@ export class NetSapiens implements INodeType {
 			} catch (error) {
 				if (error instanceof NodeOperationError) {
 					throw error;
+				}
+
+				if (operationId === 'GetAuditlog') {
+					const shouldRefresh = Boolean(this.getNodeParameter('refreshOptions', itemIndex, false));
+					const apiVersion = await getServerApiVersion(this, baseUrl, { refresh: shouldRefresh });
+					const errorText = getErrorText(error);
+					if (/no\s+route\s+found\s*\[92\]/i.test(errorText) || /no\s+route\s+found/i.test(errorText)) {
+						const versionText = apiVersion.raw
+							? ` Detected API version: ${apiVersion.raw}.`
+							: ' Unable to detect API version from /version.';
+						throw new NodeOperationError(
+							this.getNode(),
+							'Audit Log is not supported by this NetSapiens server.',
+							{
+								itemIndex,
+								description: `The server returned "No Route Found" for the Audit Log endpoint. This operation requires NetSapiens API version 45+.${versionText}`,
+							},
+						);
+					}
 				}
 
 				throw new NodeOperationError(this.getNode(), error as Error, { itemIndex });

@@ -15,6 +15,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Added generic support for limit-only operations (query `limit` without `start`) by defaulting to return all results while allowing manual limits.
 - Customized Audit Log "Read Audit Log" operation fields (target domain/user dropdowns with manual fallback, and datetime start/end inputs).
 - Improved user dropdown/search labels to include more identifying details when available.
+- Updated auto-pagination behavior to return a single item for non-array responses (for example, count-style endpoints).
+- Added Audit Log server compatibility checks (using `/version` API version when available) to show a clearer "unsupported on this server" error when the endpoint is not implemented.
 
 ## [0.1.3] - 2025-12-21
 
