@@ -62,6 +62,86 @@ const resellerAwareOperationIds = operations
 	.filter((op) => op.parameters.some((p) => p.in === 'query' && p.name === 'reseller'))
 	.map((op) => op.id);
 
+function isOffsetPaginationOperation(op: (typeof operations)[number]): boolean {
+	if (op.method !== 'GET') {
+		return false;
+	}
+
+	const start = op.parameters.find((p) => p.in === 'query' && p.name === 'start');
+	const limit = op.parameters.find((p) => p.in === 'query' && p.name === 'limit');
+	if (!start || !limit) {
+		return false;
+	}
+
+	const startDescription = (start.description ?? '').toLowerCase();
+	if (start.schemaType === 'string' || startDescription.includes('timestamp')) {
+		return false;
+	}
+
+	return true;
+}
+
+const offsetPaginatedOperationIds = new Set(
+	operations.filter((op) => isOffsetPaginationOperation(op)).map((op) => op.id),
+);
+
+function paginationParamName(operationId: string, name: string): string {
+	return `${operationId}__pagination__${name}`;
+}
+
+function toOptionalNumber(value: unknown): number | undefined {
+	if (value === null || value === undefined || value === '') {
+		return undefined;
+	}
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		return value;
+	}
+	if (typeof value === 'string') {
+		const parsed = Number(value);
+		return Number.isFinite(parsed) ? parsed : undefined;
+	}
+	return undefined;
+}
+
+async function requestAllPages(
+	context: IExecuteFunctions,
+	request: {
+		url: string;
+		qs?: IDataObject;
+		limit?: number;
+	},
+): Promise<IDataObject[]> {
+	const pageSize = typeof request.limit === 'number' && request.limit > 0 ? request.limit : 100;
+	const aggregated: IDataObject[] = [];
+	let start = 0;
+	let loops = 0;
+
+	while (loops < 1000) {
+		loops++;
+		const response = await netSapiensRequest(context, {
+			method: toHttpRequestMethod('GET'),
+			url: request.url,
+			qs: {
+				...(request.qs ?? {}),
+				start,
+				limit: pageSize,
+			},
+		});
+
+		const page = normalizeArrayResponse(response).map((entry) => toIDataObject(entry));
+		for (const entry of page) {
+			aggregated.push(entry);
+		}
+
+		if (page.length < pageSize) {
+			break;
+		}
+		start += page.length;
+	}
+
+	return aggregated;
+}
+
 function normalizeResourceName(resource: string): string {
 	return resource.trim();
 }
@@ -307,6 +387,13 @@ function buildOperationParameterFields(): INodeProperties[] {
 			if (param.in === 'query' && param.name === 'reseller' && effectiveResource !== 'Resellers') {
 				continue;
 			}
+			if (
+				offsetPaginatedOperationIds.has(op.id) &&
+				param.in === 'query' &&
+				(param.name === 'start' || param.name === 'limit')
+			) {
+				continue;
+			}
 
 			const isDomainParam = param.in === 'path' && param.name === 'domain';
 			const isDomainScopedUserParam =
@@ -395,6 +482,50 @@ function buildOperationParameterFields(): INodeProperties[] {
 				required: param.required,
 				displayOptions: fieldDisplayOptions,
 				description: param.description,
+			});
+		}
+
+		if (offsetPaginatedOperationIds.has(op.id)) {
+			const returnAllName = paginationParamName(op.id, 'returnAll');
+			fields.push({
+				displayName: 'Return All Results',
+				name: returnAllName,
+				type: 'boolean',
+				default: true,
+				displayOptions: {
+					show: {
+						resource: [effectiveResource],
+						operation: [op.id],
+					},
+				},
+				description: 'Whether to fetch all results by paging through the API',
+			});
+
+			fields.push({
+				displayName: 'Start',
+				name: paginationParamName(op.id, 'start'),
+				type: 'number',
+				default: 0,
+				displayOptions: {
+					show: {
+						resource: [effectiveResource],
+						operation: [op.id],
+						[returnAllName]: [false],
+					},
+				},
+			});
+			fields.push({
+				displayName: 'Limit',
+				name: paginationParamName(op.id, 'limit'),
+				type: 'number',
+				default: 100,
+				displayOptions: {
+					show: {
+						resource: [effectiveResource],
+						operation: [op.id],
+						[returnAllName]: [false],
+					},
+				},
 			});
 		}
 
@@ -655,18 +786,35 @@ export class NetSapiens implements INodeType {
 					return cached.options;
 				}
 
-				let response: unknown;
+				let items: unknown[];
 				try {
 					const url = `${baseUrl}/domains`;
-					response = await netSapiensRequest(this, {
+					const page = await netSapiensRequest(this, {
 						method: toHttpRequestMethod('GET'),
 						url,
+						qs: { start: 0, limit: 100 },
 					});
+					items = normalizeArrayResponse(page);
+
+					if (items.length === 100) {
+						let start = 100;
+						while (start < 100000) {
+							const nextPage = await netSapiensRequest(this, {
+								method: toHttpRequestMethod('GET'),
+								url,
+								qs: { start, limit: 100 },
+							});
+							const nextItems = normalizeArrayResponse(nextPage);
+							items.push(...nextItems);
+							if (nextItems.length < 100) {
+								break;
+							}
+							start += nextItems.length;
+						}
+					}
 				} catch {
 					return cached?.options ?? [];
 				}
-
-				const items = normalizeArrayResponse(response);
 
 				const options: INodePropertyOptions[] = [];
 
@@ -842,34 +990,50 @@ export class NetSapiens implements INodeType {
 				if (!shouldRefresh && cached && cached.options.length && now - cached.fetchedAtMs < loadOptionsTtlMs) {
 					options = cached.options;
 				} else {
-					let response: unknown;
+					let items: unknown[];
 					try {
 						const url = `${baseUrl}/domains`;
-						response = await netSapiensRequest(this, {
+						const page = await netSapiensRequest(this, {
 							method: toHttpRequestMethod('GET'),
 							url,
+							qs: { start: 0, limit: 100 },
 						});
+						items = normalizeArrayResponse(page);
+
+						if (items.length === 100) {
+							let start = 100;
+							while (start < 100000) {
+								const nextPage = await netSapiensRequest(this, {
+									method: toHttpRequestMethod('GET'),
+									url,
+									qs: { start, limit: 100 },
+								});
+								const nextItems = normalizeArrayResponse(nextPage);
+								items.push(...nextItems);
+								if (nextItems.length < 100) {
+									break;
+								}
+								start += nextItems.length;
+							}
+						}
 					} catch {
 						options = cached?.options ?? [];
+						items = [];
 					}
 
-					if (response !== undefined) {
-						const items = normalizeArrayResponse(response);
-						const next: INodePropertyOptions[] = [];
-
-						for (const item of items) {
-							const value = item as Record<string, unknown>;
-							const domain = value.domain;
-							if (typeof domain !== 'string' || !domain) {
-								continue;
-							}
-							next.push({ name: domain, value: domain });
+					const next: INodePropertyOptions[] = [];
+					for (const item of items) {
+						const value = item as Record<string, unknown>;
+						const domain = value.domain;
+						if (typeof domain !== 'string' || !domain) {
+							continue;
 						}
-
-						next.sort((a, b) => a.name.localeCompare(b.name));
-						domainsCacheByBaseUrl.set(baseUrl, { fetchedAtMs: now, options: next });
-						options = next;
+						next.push({ name: domain, value: domain });
 					}
+
+					next.sort((a, b) => a.name.localeCompare(b.name));
+					domainsCacheByBaseUrl.set(baseUrl, { fetchedAtMs: now, options: next });
+					options = next;
 				}
 
 				const normalizedFilter = typeof filter === 'string' ? filter.trim().toLowerCase() : '';
@@ -1120,6 +1284,13 @@ export class NetSapiens implements INodeType {
 					if (param.in === 'query' && param.name === 'reseller' && effectiveResource !== 'Resellers') {
 						continue;
 					}
+					if (
+						offsetPaginatedOperationIds.has(operation.id) &&
+						param.in === 'query' &&
+						(param.name === 'start' || param.name === 'limit')
+					) {
+						continue;
+					}
 
 					const value = this.getNodeParameter(
 						parameterName(operation.id, param.in, param.name),
@@ -1158,6 +1329,37 @@ export class NetSapiens implements INodeType {
 							this.getNodeParameter(`${operation.id}__body`, itemIndex, '{}') as unknown,
 						)
 					: undefined;
+
+				if (offsetPaginatedOperationIds.has(operation.id) && operation.method === 'GET') {
+					const returnAll = Boolean(
+						this.getNodeParameter(paginationParamName(operation.id, 'returnAll'), itemIndex, true),
+					);
+
+					if (returnAll) {
+						const aggregated = await requestAllPages(this, {
+							url,
+							qs: Object.keys(queryParams).length ? (queryParams as IDataObject) : undefined,
+						});
+
+						for (const entry of aggregated) {
+							returnData.push({ json: entry });
+						}
+						continue;
+					}
+
+					const manualStart = toOptionalNumber(
+						this.getNodeParameter(paginationParamName(operation.id, 'start'), itemIndex, 0),
+					);
+					const manualLimit = toOptionalNumber(
+						this.getNodeParameter(paginationParamName(operation.id, 'limit'), itemIndex, 100),
+					);
+					if (manualStart !== undefined) {
+						queryParams.start = manualStart;
+					}
+					if (manualLimit !== undefined) {
+						queryParams.limit = manualLimit;
+					}
+				}
 
 				const response = await netSapiensRequest(this, {
 					method: toHttpRequestMethod(operation.method),

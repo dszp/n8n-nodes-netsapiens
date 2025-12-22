@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - Updated Domain and User parameter dropdown behavior to fail gracefully when dynamic values or missing execution context prevent option loading.
+- Updated bundled OpenAPI spec used for generated operations.
+- Added generic support for `start`/`limit` pagination by defaulting to return all results, while allowing manual paging controls.
+- Updated domain dropdown option loading to page through `/domains` when pagination is required.
 
 ## [0.1.3] - 2025-12-21
 
