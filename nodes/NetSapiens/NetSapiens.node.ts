@@ -534,6 +534,7 @@ function formatUserLabel(value: Record<string, unknown>, userId: string): string
 
 function buildOperationParameterFields(): INodeProperties[] {
 	const fields: INodeProperties[] = [];
+	const noticeByOperationId = new Set<string>();
 
 	for (const op of operations) {
 		const override = operationOverrides[op.id];
@@ -551,6 +552,48 @@ function buildOperationParameterFields(): INodeProperties[] {
 			const isPathOrQuery = param.in === 'path' || param.in === 'query';
 			if (!isPathOrQuery) {
 				continue;
+			}
+
+			if (!noticeByOperationId.has(op.id) && param.in === 'path' && param.name === 'domain') {
+				if (op.id === 'SearchUsers') {
+					fields.push({
+						displayName: 'Note',
+						name: `${op.id}__notice__paginationInfo`,
+						type: 'notice',
+						default: '',
+						displayOptions: {
+							show: {
+								resource: [effectiveResource],
+								operation: [op.id],
+							},
+						},
+						typeOptions: {
+							theme: 'warning',
+						},
+						description:
+							'Only the first 100 results are returned. Use "Get Users in Domain" to return all users with pagination.',
+					});
+					noticeByOperationId.add(op.id);
+				} else if (op.id === 'GetUsers') {
+					fields.push({
+						displayName: 'Note',
+						name: `${op.id}__notice__paginationInfo`,
+						type: 'notice',
+						default: '',
+						displayOptions: {
+							show: {
+								resource: [effectiveResource],
+								operation: [op.id],
+							},
+						},
+						typeOptions: {
+							theme: 'info',
+						},
+						description:
+							'This operation can return all users using pagination. "Search for Users in Domain" supports Site filtering but returns a maximum of 100 results.',
+					});
+					noticeByOperationId.add(op.id);
+				}
 			}
 
 			if (param.in === 'query' && param.name === 'reseller' && effectiveResource !== 'Resellers') {
