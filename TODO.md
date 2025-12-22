@@ -4,11 +4,6 @@ This file tracks ideas, potential enhancements, and follow-up work for `n8n-node
 
 Nothing in this file is a commitment. Items may change, be re-prioritized, or be removed at any time.
 
-## Packaging and documentation
-
-- Update `package.json` `repository.url` to the real GitHub repository URL.
-- Update the credential `documentationUrl` in `credentials/NetSapiensApi.credentials.ts` to the final documentation URL.
-
 ## Node UX defaults
 
 - Decide whether Authentication resources/actions should be hidden by default in the node UI.
