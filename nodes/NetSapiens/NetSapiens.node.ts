@@ -2,6 +2,8 @@ import type {
 	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeListSearchItems,
+	INodeListSearchResult,
 	INodeExecutionData,
 	INodeProperties,
 	INodePropertyOptions,
@@ -31,6 +33,30 @@ const domainsCacheByBaseUrl = new Map<string, CacheEntry>();
 const usersCacheByBaseUrlAndDomain = new Map<string, CacheEntry>();
 
 const loadOptionsTtlMs = 15 * 60 * 1000;
+
+function isExpressionLikeValue(value: string): boolean {
+	const trimmed = value.trim();
+	if (!trimmed) {
+		return false;
+	}
+
+	return trimmed.startsWith('=') || trimmed.includes('{{');
+}
+
+function extractLocatorValue(value: unknown): string {
+	if (typeof value === 'string' || typeof value === 'number') {
+		return String(value);
+	}
+
+	if (value && typeof value === 'object' && 'value' in value) {
+		const raw = (value as { value?: unknown }).value;
+		if (typeof raw === 'string' || typeof raw === 'number') {
+			return String(raw);
+		}
+	}
+
+	return '';
+}
 
 const resellerAwareOperationIds = operations
 	.filter((op) => op.parameters.some((p) => p.in === 'query' && p.name === 'reseller'))
@@ -282,38 +308,92 @@ function buildOperationParameterFields(): INodeProperties[] {
 				continue;
 			}
 
-			const isDomainParam = param.name === 'domain' && effectiveResource !== 'Domains';
+			const isDomainParam = param.in === 'path' && param.name === 'domain';
 			const isDomainScopedUserParam =
 				param.in === 'path' &&
 				param.name === 'user' &&
 				Boolean(domainParamFieldName) &&
 				effectiveResource !== 'Users';
 
+			const fieldDisplayOptions = {
+				show: {
+					resource: [effectiveResource],
+					operation: [op.id],
+				},
+			};
+			const fieldName = parameterName(op.id, param.in, param.name);
+
+			if (isDomainParam) {
+				fields.push({
+					displayName: formatParameterLabel(param.name),
+					name: fieldName,
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+					modes: [
+						{
+							displayName: 'Domain',
+							name: 'list',
+							type: 'list',
+							placeholder: 'Select a domain...',
+							typeOptions: {
+								searchListMethod: 'searchDomains',
+								searchable: true,
+								searchFilterRequired: false,
+							},
+						},
+						{
+							displayName: 'Domain',
+							name: 'name',
+							type: 'string',
+							placeholder: 'e.g. example.com',
+						},
+					],
+				});
+				continue;
+			}
+
+			if (isDomainScopedUserParam) {
+				fields.push({
+					displayName: formatParameterLabel(param.name),
+					name: fieldName,
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+					modes: [
+						{
+							displayName: 'User',
+							name: 'list',
+							type: 'list',
+							placeholder: 'Select a user...',
+							typeOptions: {
+								searchListMethod: 'searchUsersForDomain',
+								searchable: true,
+								searchFilterRequired: false,
+							},
+						},
+						{
+							displayName: 'User',
+							name: 'id',
+							type: 'string',
+							placeholder: 'e.g. 1001',
+						},
+					],
+				});
+				continue;
+			}
+
 			fields.push({
 				displayName: formatParameterLabel(param.name),
-				name: parameterName(op.id, param.in, param.name),
-				type:
-					isDomainParam || isDomainScopedUserParam
-						? 'options'
-						: guessFieldType(param.schemaType),
-				typeOptions: isDomainParam
-					? {
-							loadOptionsMethod: 'getDomains',
-						}
-					: isDomainScopedUserParam
-						? {
-								loadOptionsMethod: 'getUsersForDomain',
-								loadOptionsDependsOn: [domainParamFieldName as string],
-							}
-						: undefined,
+				name: fieldName,
+				type: guessFieldType(param.schemaType),
 				default: '',
 				required: param.required,
-				displayOptions: {
-					show: {
-						resource: [effectiveResource],
-						operation: [op.id],
-					},
-				},
+				displayOptions: fieldDisplayOptions,
 				description: param.description,
 			});
 		}
@@ -557,11 +637,16 @@ export class NetSapiens implements INodeType {
 			},
 
 			async getDomains(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const credentials = (await this.getCredentials('netSapiensApi')) as {
-					server?: string;
-					baseUrl?: string;
-				};
-				const baseUrl = resolveBaseUrl(credentials);
+				let baseUrl = '';
+				try {
+					const credentials = (await this.getCredentials('netSapiensApi')) as {
+						server?: string;
+						baseUrl?: string;
+					};
+					baseUrl = resolveBaseUrl(credentials);
+				} catch {
+					return [];
+				}
 				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
 
 				const now = Date.now();
@@ -570,11 +655,16 @@ export class NetSapiens implements INodeType {
 					return cached.options;
 				}
 
-				const url = `${baseUrl}/domains`;
-				const response = await netSapiensRequest(this, {
-					method: toHttpRequestMethod('GET'),
-					url,
-				});
+				let response: unknown;
+				try {
+					const url = `${baseUrl}/domains`;
+					response = await netSapiensRequest(this, {
+						method: toHttpRequestMethod('GET'),
+						url,
+					});
+				} catch {
+					return cached?.options ?? [];
+				}
 
 				const items = normalizeArrayResponse(response);
 
@@ -601,22 +691,37 @@ export class NetSapiens implements INodeType {
 			},
 
 			async getUsersForDomain(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const credentials = (await this.getCredentials('netSapiensApi')) as {
-					server?: string;
-					baseUrl?: string;
-				};
-				const baseUrl = resolveBaseUrl(credentials);
+				let baseUrl = '';
+				try {
+					const credentials = (await this.getCredentials('netSapiensApi')) as {
+						server?: string;
+						baseUrl?: string;
+					};
+					baseUrl = resolveBaseUrl(credentials);
+				} catch {
+					return [];
+				}
 
-				const operationId = this.getCurrentNodeParameter('operation') as string | undefined;
+				let operationId: string | undefined;
+				try {
+					operationId = this.getCurrentNodeParameter('operation') as string | undefined;
+				} catch {
+					return [];
+				}
 				if (!operationId) {
 					return [];
 				}
 
 				const domainParamName = parameterName(operationId, 'path', 'domain');
-				const domainValue = this.getCurrentNodeParameter(domainParamName) as string | undefined;
-				const domain = typeof domainValue === 'string' ? domainValue.trim() : '';
+				let domainParam: unknown;
+				try {
+					domainParam = this.getCurrentNodeParameter(domainParamName, { rawExpressions: true });
+				} catch {
+					return [];
+				}
+				const domain = extractLocatorValue(domainParam).trim();
 
-				if (!domain) {
+				if (!domain || isExpressionLikeValue(domain)) {
 					return [];
 				}
 
@@ -629,11 +734,16 @@ export class NetSapiens implements INodeType {
 					return cached.options;
 				}
 
-				const url = `${baseUrl}/domains/${encodeURIComponent(domain)}/users`;
-				const response = await netSapiensRequest(this, {
-					method: toHttpRequestMethod('GET'),
-					url,
-				});
+				let response: unknown;
+				try {
+					const url = `${baseUrl}/domains/${encodeURIComponent(domain)}/users`;
+					response = await netSapiensRequest(this, {
+						method: toHttpRequestMethod('GET'),
+						url,
+					});
+				} catch {
+					return cached?.options ?? [];
+				}
 
 				const items = normalizeArrayResponse(response);
 				const options: INodePropertyOptions[] = [];
@@ -707,6 +817,210 @@ export class NetSapiens implements INodeType {
 				options.sort((a, b) => a.name.localeCompare(b.name));
 				usersCacheByBaseUrlAndDomain.set(cacheKey, { fetchedAtMs: now, options });
 				return options;
+			},
+		},
+		listSearch: {
+			async searchDomains(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				let baseUrl = '';
+				try {
+					const credentials = (await this.getCredentials('netSapiensApi')) as {
+						server?: string;
+						baseUrl?: string;
+					};
+					baseUrl = resolveBaseUrl(credentials);
+				} catch {
+					return { results: [] };
+				}
+				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
+				const now = Date.now();
+				const cached = domainsCacheByBaseUrl.get(baseUrl);
+
+				let options: INodePropertyOptions[] = [];
+				if (!shouldRefresh && cached && cached.options.length && now - cached.fetchedAtMs < loadOptionsTtlMs) {
+					options = cached.options;
+				} else {
+					let response: unknown;
+					try {
+						const url = `${baseUrl}/domains`;
+						response = await netSapiensRequest(this, {
+							method: toHttpRequestMethod('GET'),
+							url,
+						});
+					} catch {
+						options = cached?.options ?? [];
+					}
+
+					if (response !== undefined) {
+						const items = normalizeArrayResponse(response);
+						const next: INodePropertyOptions[] = [];
+
+						for (const item of items) {
+							const value = item as Record<string, unknown>;
+							const domain = value.domain;
+							if (typeof domain !== 'string' || !domain) {
+								continue;
+							}
+							next.push({ name: domain, value: domain });
+						}
+
+						next.sort((a, b) => a.name.localeCompare(b.name));
+						domainsCacheByBaseUrl.set(baseUrl, { fetchedAtMs: now, options: next });
+						options = next;
+					}
+				}
+
+				const normalizedFilter = typeof filter === 'string' ? filter.trim().toLowerCase() : '';
+				const results = options
+					.filter((entry: INodePropertyOptions) => {
+						if (!normalizedFilter) {
+							return true;
+						}
+						return entry.name.toLowerCase().includes(normalizedFilter);
+					})
+					.slice(0, 200)
+					.map(
+						(entry: INodePropertyOptions): INodeListSearchItems => ({
+							name: entry.name,
+							value: entry.value,
+						}),
+					);
+
+				return { results };
+			},
+
+			async searchUsersForDomain(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				let baseUrl = '';
+				try {
+					const credentials = (await this.getCredentials('netSapiensApi')) as {
+						server?: string;
+						baseUrl?: string;
+					};
+					baseUrl = resolveBaseUrl(credentials);
+				} catch {
+					return { results: [] };
+				}
+
+				let operationId: string | undefined;
+				try {
+					operationId = this.getCurrentNodeParameter('operation') as string | undefined;
+				} catch {
+					return { results: [] };
+				}
+				if (!operationId) {
+					return { results: [] };
+				}
+
+				const domainParamName = `${operationId}__path__domain`;
+				let domainParam: unknown;
+				try {
+					domainParam = this.getCurrentNodeParameter(domainParamName, { rawExpressions: true });
+				} catch {
+					return { results: [] };
+				}
+				const domain = extractLocatorValue(domainParam).trim();
+				if (!domain || isExpressionLikeValue(domain)) {
+					return { results: [] };
+				}
+
+				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
+				const cacheKey = `${baseUrl}::${domain}`;
+				const now = Date.now();
+				const cached = usersCacheByBaseUrlAndDomain.get(cacheKey);
+
+				let options: INodePropertyOptions[] = [];
+				if (!shouldRefresh && cached && cached.options.length && now - cached.fetchedAtMs < loadOptionsTtlMs) {
+					options = cached.options;
+				} else {
+					let response: unknown;
+					try {
+						const url = `${baseUrl}/domains/${encodeURIComponent(domain)}/users`;
+						response = await netSapiensRequest(this, {
+							method: toHttpRequestMethod('GET'),
+							url,
+						});
+					} catch {
+						options = cached?.options ?? [];
+					}
+
+					if (response !== undefined) {
+						const items = normalizeArrayResponse(response);
+						const next: INodePropertyOptions[] = [];
+
+						for (const item of items) {
+							const value = item as Record<string, unknown>;
+							const rawUser =
+								value.user ??
+								value.id ??
+								value.uid ??
+								value.userId ??
+								value.userID ??
+								value.user_id ??
+								value.userid ??
+								value.userID;
+							const userId =
+								typeof rawUser === 'string' || typeof rawUser === 'number'
+									? String(rawUser).trim()
+									: '';
+							if (!userId) {
+								continue;
+							}
+
+							const loginUsername = getFirstStringField(value, [
+								'loginUsername',
+								'username',
+								'login',
+							]);
+							const firstName = getFirstStringField(value, ['firstName', 'firstname', 'givenName']);
+							const lastName = getFirstStringField(value, ['lastName', 'lastname', 'surname', 'familyName']);
+							const serviceCode = getFirstStringField(value, ['serviceCode', 'service', 'type']);
+
+							const fullName = [firstName, lastName].filter(Boolean).join(' ');
+							let label = '';
+							if (serviceCode) {
+								label = `${userId} - ${serviceCode.toUpperCase()}`;
+							} else {
+								const parts = [userId];
+								if (loginUsername) {
+									parts.push(loginUsername);
+								}
+								if (fullName) {
+									parts.push(fullName);
+								}
+								label = parts.join(' - ');
+							}
+
+							next.push({ name: label, value: userId });
+						}
+
+						next.sort((a, b) => a.name.localeCompare(b.name));
+						usersCacheByBaseUrlAndDomain.set(cacheKey, { fetchedAtMs: now, options: next });
+						options = next;
+					}
+				}
+
+				const normalizedFilter = typeof filter === 'string' ? filter.trim().toLowerCase() : '';
+				const results = options
+					.filter((entry: INodePropertyOptions) => {
+						if (!normalizedFilter) {
+							return true;
+						}
+						return entry.name.toLowerCase().includes(normalizedFilter);
+					})
+					.slice(0, 200)
+					.map(
+						(entry: INodePropertyOptions): INodeListSearchItems => ({
+							name: entry.name,
+							value: entry.value,
+						}),
+					);
+
+				return { results };
 			},
 		},
 	};
@@ -812,12 +1126,14 @@ export class NetSapiens implements INodeType {
 						itemIndex,
 						'',
 					) as unknown;
+					const effectiveValue =
+						param.name === 'domain' || param.name === 'user' ? (extractLocatorValue(value) || '') : value;
 
 					if (param.in === 'path') {
-						pathParams[param.name] = value;
+						pathParams[param.name] = effectiveValue;
 					} else {
-						if (value !== '' && value !== undefined && value !== null) {
-							queryParams[param.name] = value;
+						if (effectiveValue !== '' && effectiveValue !== undefined && effectiveValue !== null) {
+							queryParams[param.name] = effectiveValue;
 						}
 					}
 				}
