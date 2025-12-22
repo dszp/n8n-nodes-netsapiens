@@ -156,7 +156,18 @@ async function requestAllPages(
 			},
 		});
 
-		const page = normalizeArrayResponse(response).map((entry) => toIDataObject(entry));
+		const normalized = normalizeArrayResponse(response);
+		if (
+			loops === 1 &&
+			normalized.length === 0 &&
+			response !== null &&
+			response !== undefined &&
+			!Array.isArray(response)
+		) {
+			return [toIDataObject(response)];
+		}
+
+		const page = normalized.map((entry) => toIDataObject(entry));
 		for (const entry of page) {
 			aggregated.push(entry);
 		}
