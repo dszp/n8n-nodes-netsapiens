@@ -21,6 +21,10 @@ import {
 	toHttpRequestMethod,
 } from '../../transport/request';
 
+type RequestMode = 'sync' | 'asyncAck' | 'asyncEcho';
+
+type DisplayOptionsShow = NonNullable<INodeProperties['displayOptions']>['show'];
+
 type Options = INodePropertyOptions;
 
 type CacheEntry = {
@@ -94,6 +98,679 @@ async function getServerApiVersion(
 		apiVersionCacheByBaseUrl.set(baseUrl, entry);
 		return entry;
 	}
+}
+
+function operationKey(operationId: string, key: string): string {
+	return `${operationId}__templated__${key}`;
+}
+
+function operationBodyFieldKey(operationId: string, fieldName: string): string {
+	return operationKey(operationId, `body__${fieldName}`);
+}
+
+function optionalFieldsKey(operationId: string): string {
+	return operationKey(operationId, 'optionalFields');
+}
+
+function requestModeKey(operationId: string): string {
+	return operationKey(operationId, 'requestMode');
+}
+
+function shouldShowTemplatedField(resource: string, operationId: string): DisplayOptionsShow {
+	return {
+		resource: [resource],
+		operation: [operationId],
+	};
+}
+
+function toOptionalString(value: unknown): string | undefined {
+	if (value === null || value === undefined) {
+		return undefined;
+	}
+	if (typeof value === 'string') {
+		const trimmed = value.trim();
+		return trimmed ? trimmed : undefined;
+	}
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		return String(value);
+	}
+	return undefined;
+}
+
+function toOptionalNumberValue(value: unknown): number | undefined {
+	if (value === null || value === undefined || value === '') {
+		return undefined;
+	}
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		return value;
+	}
+	if (typeof value === 'string') {
+		const parsed = Number(value);
+		return Number.isFinite(parsed) ? parsed : undefined;
+	}
+	return undefined;
+}
+
+const templatedUserCreateId = 'CreateUser';
+const templatedUserUpdateId = 'UpdateUser';
+const templatedUserDeleteId = 'DeleteUser';
+
+const templatedUserResource = 'Users';
+
+const createUserRequiredFields = ['user', 'name-first-name', 'name-last-name', 'email-address', 'user-scope'];
+
+const updateUserRequiredFields = ['name-first-name', 'name-last-name', 'email-address', 'user-scope'];
+
+const userCommonFields: Array<{
+	displayName: string;
+	name: string;
+	type: INodeProperties['type'];
+	default: INodeProperties['default'];
+	required?: boolean;
+	description?: string;
+	options?: Array<{ name: string; value: string }>;
+	typeOptions?: INodeProperties['typeOptions'];
+}> = [
+	{
+		displayName: 'User',
+		name: 'user',
+		type: 'string',
+		default: '',
+		required: true,
+	},
+	{
+		displayName: 'First Name',
+		name: 'name-first-name',
+		type: 'string',
+		default: '',
+		required: true,
+	},
+	{
+		displayName: 'Last Name',
+		name: 'name-last-name',
+		type: 'string',
+		default: '',
+		required: true,
+	},
+	{
+		displayName: 'Login Username',
+		name: 'login-username',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Email Address',
+		name: 'email-address',
+		type: 'string',
+		default: '',
+		required: true,
+	},
+	{
+		displayName: 'User Scope',
+		name: 'user-scope',
+		type: 'options',
+		default: 'Basic User',
+		required: true,
+		options: [
+			{ name: 'Advanced User', value: 'Advanced User' },
+			{ name: 'Basic User', value: 'Basic User' },
+			{ name: 'Call Center Agent', value: 'Call Center Agent' },
+			{ name: 'Call Center Supervisor', value: 'Call Center Supervisor' },
+			{ name: 'NDP', value: 'NDP' },
+			{ name: 'No Portal', value: 'No Portal ' },
+			{ name: 'Office Manager', value: 'Office Manager' },
+			{ name: 'Reseller', value: 'Reseller' },
+			{ name: 'Simple User', value: 'Simple User' },
+			{ name: 'Site Manager', value: 'Site Manager' },
+			{ name: 'Super User', value: 'Super User' },
+		],
+	},
+	{
+		displayName: 'Department',
+		name: 'department',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Site',
+		name: 'site',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Time Zone',
+		name: 'time-zone',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Voicemail Login PIN',
+		name: 'voicemail-login-pin',
+		type: 'string',
+		default: '',
+		typeOptions: { password: true },
+	},
+	{
+		displayName: 'Privacy',
+		name: 'privacy',
+		type: 'options',
+		default: 'no',
+		options: [
+			{ name: 'No', value: 'no' },
+			{ name: 'Yes', value: 'yes' },
+		],
+	},
+	{
+		displayName: 'Dial Plan',
+		name: 'dial-plan',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Dial Policy',
+		name: 'dial-policy',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Status Message',
+		name: 'status-message',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Directory Name Number DTMF Mapping',
+		name: 'directory-name-number-dtmf-mapping',
+		type: 'number',
+		default: '',
+	},
+	{
+		displayName: 'Voicemail User Control Enabled',
+		name: 'voicemail-user-control-enabled',
+		type: 'options',
+		default: 'yes',
+		options: [
+			{ name: 'No', value: 'no' },
+			{ name: 'Yes', value: 'yes' },
+		],
+	},
+	{
+		displayName: 'Phone Numbers To Allow Enabled',
+		name: 'phone-numbers-to-allow-enabled',
+		type: 'options',
+		default: 'yes',
+		options: [
+			{ name: 'No', value: 'no' },
+			{ name: 'Yes', value: 'yes' },
+		],
+	},
+	{
+		displayName: 'Phone Numbers To Reject Enabled',
+		name: 'phone-numbers-to-reject-enabled',
+		type: 'options',
+		default: 'yes',
+		options: [
+			{ name: 'No', value: 'no' },
+			{ name: 'Yes', value: 'yes' },
+		],
+	},
+	{
+		displayName: 'Call Screening Enabled',
+		name: 'call-screening-enabled',
+		type: 'options',
+		default: 'yes',
+		options: [
+			{ name: 'No', value: 'no' },
+			{ name: 'Yes', value: 'yes' },
+		],
+	},
+	{
+		displayName: 'Ring No Answer Timeout (Seconds)',
+		name: 'ring-no-answer-timeout-seconds',
+		type: 'number',
+		default: '',
+	},
+	{
+		displayName: 'Language Token',
+		name: 'language-token',
+		type: 'string',
+		default: 'en_US',
+		typeOptions: { password: true },
+	},
+	{
+		displayName: 'Limits: Max Data Storage (KB)',
+		name: 'limits-max-data-storage-kilobytes',
+		type: 'number',
+		default: '',
+	},
+	{
+		displayName: 'Limits: Max Active Calls (Total)',
+		name: 'limits-max-active-calls-total',
+		type: 'number',
+		default: '',
+	},
+	{
+		displayName: 'Directory Announce In Dial By Name Enabled',
+		name: 'directory-annouce-in-dial-by-name-enabled',
+		type: 'options',
+		default: 'yes',
+		options: [
+			{ name: 'No', value: 'no' },
+			{ name: 'Yes', value: 'yes' },
+		],
+	},
+	{
+		displayName: 'Directory Override Order Duplicate DTMF Mapping',
+		name: 'directory-override-order-duplicate-dtmf-mapping',
+		type: 'number',
+		default: '',
+	},
+	{
+		displayName: 'Voicemail Greeting Index',
+		name: 'voicemail-greeting-index',
+		type: 'number',
+		default: '',
+	},
+	{
+		displayName: 'Voicemail Enabled',
+		name: 'voicemail-enabled',
+		type: 'options',
+		default: 'yes',
+		options: [
+			{ name: 'No', value: 'no' },
+			{ name: 'Yes', value: 'yes' },
+		],
+	},
+	{
+		displayName: 'Voicemail Receive Broadcast Enabled',
+		name: 'voicemail-receive-broadcast-enabled',
+		type: 'options',
+		default: 'yes',
+		options: [
+			{ name: 'No', value: 'no' },
+			{ name: 'Yes', value: 'yes' },
+		],
+	},
+	{
+		displayName: 'Reject Anonymous Calls Enabled',
+		name: 'reject-anonymous-calls-enabled',
+		type: 'options',
+		default: 'no',
+		options: [
+			{ name: 'No', value: 'no' },
+			{ name: 'Yes', value: 'yes' },
+		],
+	},
+	{
+		displayName: 'Voicemail Playback Announce Date Time Received',
+		name: 'voicemail-playback-announce-datetime-received',
+		type: 'options',
+		default: 'no',
+		options: [
+			{ name: 'No', value: 'no' },
+			{ name: 'Yes', value: 'yes' },
+		],
+	},
+	{
+		displayName: 'Voicemail Playback Announce Caller ID',
+		name: 'voicemail-playback-announce-caller-id',
+		type: 'options',
+		default: 'no',
+		options: [
+			{ name: 'No', value: 'no' },
+			{ name: 'Yes', value: 'yes' },
+		],
+	},
+	{
+		displayName: 'Voicemail Playback Sort Newest To Oldest',
+		name: 'voicemail-playback-sort-newest-to-oldest',
+		type: 'options',
+		default: 'yes',
+		options: [
+			{ name: 'No', value: 'no' },
+			{ name: 'Yes', value: 'yes' },
+		],
+	},
+	{
+		displayName: 'Email: Send Alert New Voicemail CC List CSV',
+		name: 'email-send-alert-new-voicemail-cc-list-csv',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Email: Send Alert New Voicemail Behavior',
+		name: 'email-send-alert-new-voicemail-behavior',
+		type: 'options',
+		default: 'no',
+		options: [
+			{ name: 'Attnew', value: 'attnew' },
+			{ name: 'Attsave', value: 'attsave' },
+			{ name: 'Atttrash', value: 'atttrash' },
+			{ name: 'Brief', value: 'brief' },
+			{ name: 'Briefattnew', value: 'briefattnew' },
+			{ name: 'Briefattsave', value: 'briefattsave' },
+			{ name: 'Briefatttrash', value: 'briefatttrash' },
+			{ name: 'No', value: 'no' },
+			{ name: 'Yes', value: 'yes' },
+		],
+	},
+	{
+		displayName: 'Email: Send Alert New Voicemail Enabled',
+		name: 'email-send-alert-new-voicemail-enabled',
+		type: 'options',
+		default: 'no',
+		options: [
+			{ name: 'No', value: 'no' },
+			{ name: 'Yes', value: 'yes' },
+		],
+	},
+	{
+		displayName: 'Email: Send Alert New Missed Call Enabled',
+		name: 'email-send-alert-new-missed-call-enabled',
+		type: 'options',
+		default: 'no',
+		options: [
+			{ name: 'No', value: 'no' },
+			{ name: 'Yes', value: 'yes' },
+		],
+	},
+	{
+		displayName: 'Email: Send Alert Data Storage Limit Reached Enabled',
+		name: 'email-send-alert-data-storage-limit-reached-enabled',
+		type: 'options',
+		default: 'no',
+		options: [
+			{ name: 'No', value: 'no' },
+			{ name: 'Yes', value: 'yes' },
+		],
+	},
+	{
+		displayName: 'Caller ID Number',
+		name: 'caller-id-number',
+		type: 'number',
+		default: '',
+	},
+	{
+		displayName: 'Caller ID Name',
+		name: 'caller-id-name',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Caller ID Number (Emergency)',
+		name: 'caller-id-number-emergency',
+		type: 'number',
+		default: '',
+	},
+	{
+		displayName: 'Area Code',
+		name: 'area-code',
+		type: 'number',
+		default: '',
+	},
+	{
+		displayName: 'Directory Name Visible In List Enabled',
+		name: 'directory-name-visible-in-list-enabled',
+		type: 'options',
+		default: 'yes',
+		options: [
+			{ name: 'No', value: 'no' },
+			{ name: 'Yes', value: 'yes' },
+		],
+	},
+	{
+		displayName: 'Service Code',
+		name: 'service-code',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Voicemail Transcription',
+		name: 'voicemail-transcription-enabled',
+		type: 'options',
+		default: 'no',
+		options: [
+			{ name: 'Deepgram', value: 'Deepgram' },
+			{ name: 'Google', value: 'Google' },
+			{ name: 'Mutare', value: 'Mutare' },
+			{ name: 'No', value: 'no' },
+			{ name: 'Voicebase', value: 'Voicebase' },
+		],
+	},
+	{
+		displayName: 'Emergency Address ID',
+		name: 'emergency-address-id',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Call Recordings Hide From Others Enabled',
+		name: 'call-recordings-hide-from-others-enabled',
+		type: 'options',
+		default: 'no',
+		options: [
+			{ name: 'No', value: 'no' },
+			{ name: 'Yes', value: 'yes' },
+		],
+	},
+	{
+		displayName: 'Music On Hold Randomized Enabled',
+		name: 'music-on-hold-randomized-enabled',
+		type: 'options',
+		default: 'no',
+		options: [
+			{ name: 'No', value: 'no' },
+			{ name: 'Yes', value: 'yes' },
+		],
+	},
+	{
+		displayName: 'Music On Hold Comfort Message Repeat Interval (Seconds)',
+		name: 'music-on-hold-comfort-message-repeat-interval-seconds',
+		type: 'number',
+		default: '',
+	},
+	{
+		displayName: 'Recording Configuration',
+		name: 'recording-configuration',
+		type: 'options',
+		default: 'no',
+		options: [
+			{ name: 'No', value: 'no' },
+			{ name: 'Yes', value: 'yes' },
+			{ name: 'Yes With Transcription', value: 'yes-with-transcription' },
+			{ name: 'Yes With Transcription And Sentiment', value: 'yes-with-transcription-and-sentiment' },
+		],
+	},
+];
+
+const numericUserFields = new Set([
+	'area-code',
+	'caller-id-number',
+	'caller-id-number-emergency',
+	'directory-name-number-dtmf-mapping',
+	'directory-override-order-duplicate-dtmf-mapping',
+	'limits-max-active-calls-total',
+	'limits-max-data-storage-kilobytes',
+	'music-on-hold-comfort-message-repeat-interval-seconds',
+	'ring-no-answer-timeout-seconds',
+	'voicemail-greeting-index',
+	'voicemail-login-pin',
+]);
+
+function buildTemplatedUserFields(): INodeProperties[] {
+	const fields: INodeProperties[] = [];
+
+	fields.push({
+		displayName: 'Request Mode',
+		name: requestModeKey(templatedUserCreateId),
+		type: 'options',
+		default: 'sync',
+		displayOptions: {
+			show: shouldShowTemplatedField(templatedUserResource, templatedUserCreateId),
+		},
+		options: [
+			{ name: 'Synchronous (Return Created Object)', value: 'sync' },
+			{ name: 'Asynchronous (Return Acknowledgement)', value: 'asyncAck' },
+			{ name: 'Asynchronous (Return Submitted Values)', value: 'asyncEcho' },
+		],
+		description:
+			'Synchronous requests aim to return the created object (200). If the server returns 202, the request was accepted asynchronously.',
+	});
+
+	const optionalFieldsName = optionalFieldsKey(templatedUserCreateId);
+
+	fields.push({
+		displayName: 'Optional Fields',
+		name: optionalFieldsName,
+		type: 'multiOptions',
+		default: [],
+		displayOptions: {
+			show: shouldShowTemplatedField(templatedUserResource, templatedUserCreateId),
+		},
+		options: userCommonFields
+			.filter((f) => !createUserRequiredFields.includes(f.name))
+			.map((f) => ({ name: f.displayName, value: f.name })),
+	});
+
+	for (const field of userCommonFields) {
+		const isRequired = createUserRequiredFields.includes(field.name);
+		const shouldShow = isRequired
+			? shouldShowTemplatedField(templatedUserResource, templatedUserCreateId)
+			: {
+				...shouldShowTemplatedField(templatedUserResource, templatedUserCreateId),
+				[optionalFieldsName]: [field.name],
+			};
+
+		fields.push({
+			displayName: field.displayName,
+			name: operationBodyFieldKey(templatedUserCreateId, field.name),
+			type: field.type,
+			default: field.default,
+			required: isRequired,
+			displayOptions: { show: shouldShow },
+			description: field.description,
+			options: field.options,
+			typeOptions: field.typeOptions,
+		});
+	}
+
+	const updateOptionalFieldsName = optionalFieldsKey(templatedUserUpdateId);
+	fields.push({
+		displayName: 'Optional Fields',
+		name: updateOptionalFieldsName,
+		type: 'multiOptions',
+		default: [],
+		displayOptions: {
+			show: shouldShowTemplatedField(templatedUserResource, templatedUserUpdateId),
+		},
+		options: userCommonFields
+			.filter((f) => !updateUserRequiredFields.includes(f.name) && f.name !== 'user')
+			.map((f) => ({ name: f.displayName, value: f.name })),
+	});
+
+	for (const field of userCommonFields) {
+		if (field.name === 'user') {
+			continue;
+		}
+		const isRequired = updateUserRequiredFields.includes(field.name);
+		const shouldShow = isRequired
+			? shouldShowTemplatedField(templatedUserResource, templatedUserUpdateId)
+			: {
+				...shouldShowTemplatedField(templatedUserResource, templatedUserUpdateId),
+				[updateOptionalFieldsName]: [field.name],
+			};
+
+		fields.push({
+			displayName: field.displayName,
+			name: operationBodyFieldKey(templatedUserUpdateId, field.name),
+			type: field.type,
+			default: field.default,
+			required: isRequired,
+			displayOptions: { show: shouldShow },
+			description: field.description,
+			options: field.options,
+			typeOptions: field.typeOptions,
+		});
+	}
+
+	return fields;
+}
+
+function shouldUseTemplatedUserOperation(resource: string, operationId: string): boolean {
+	if (resource !== templatedUserResource) {
+		return false;
+	}
+	return (
+		operationId === templatedUserCreateId ||
+		operationId === templatedUserUpdateId ||
+		operationId === templatedUserDeleteId
+	);
+}
+
+function toRequestMode(value: unknown): RequestMode {
+	if (value === 'asyncAck' || value === 'asyncEcho' || value === 'sync') {
+		return value;
+	}
+	return 'sync';
+}
+
+function toAcknowledgement(statusCode: number | undefined): IDataObject {
+	const code = typeof statusCode === 'number' ? statusCode : undefined;
+	return {
+		accepted: code === 202 ? true : undefined,
+		acknowledged: code ? code >= 200 && code < 300 : true,
+		statusCode: code,
+	};
+}
+
+function buildTemplatedBody(
+	context: IExecuteFunctions,
+	itemIndex: number,
+	operationId: string,
+	requiredFields: string[],
+	options: { includeSynchronous?: boolean; requestMode?: RequestMode; readOnlyFields?: Set<string> },
+): IDataObject {
+	const selected = new Set<string>();
+	for (const key of requiredFields) {
+		selected.add(key);
+	}
+	const optional = context.getNodeParameter(optionalFieldsKey(operationId), itemIndex, []) as string[];
+	for (const key of optional) {
+		selected.add(key);
+	}
+
+	const body: IDataObject = {};
+	for (const fieldName of selected) {
+		if (options.readOnlyFields?.has(fieldName)) {
+			continue;
+		}
+		const raw = context.getNodeParameter(operationBodyFieldKey(operationId, fieldName), itemIndex, '') as unknown;
+		const fieldDef = userCommonFields.find((f) => f.name === fieldName);
+		if (!fieldDef) {
+			continue;
+		}
+
+		let value: unknown;
+		if (numericUserFields.has(fieldName)) {
+			value = toOptionalNumberValue(raw);
+		} else {
+			value = toOptionalString(raw);
+		}
+		if (value === undefined) {
+			continue;
+		}
+		body[fieldName] = value as IDataObject[''];
+	}
+
+	if (options.includeSynchronous) {
+		body.synchronous = options.requestMode === 'sync' ? 'yes' : 'no';
+	}
+
+	return body;
+}
+
+function isFullHttpResponse(value: unknown): value is { statusCode: number; body: unknown } {
+	return Boolean(value) && typeof value === 'object' && 'statusCode' in (value as IDataObject);
 }
 
 function getErrorText(error: unknown): string {
@@ -857,6 +1534,9 @@ function buildOperationParameterFields(): INodeProperties[] {
 		}
 
 		if (op.hasRequestBody) {
+			if (op.id === templatedUserCreateId || op.id === templatedUserUpdateId) {
+				continue;
+			}
 			fields.push({
 				displayName: 'Body',
 				name: `${op.id}__body`,
@@ -1042,6 +1722,7 @@ export class NetSapiens implements INodeType {
 					},
 				},
 			},
+			...buildTemplatedUserFields(),
 			...buildOperationParameterFields(),
 		],
 	};
@@ -1621,6 +2302,123 @@ export class NetSapiens implements INodeType {
 					);
 				}
 				const url = `${baseUrl}${resolvedPath}`;
+
+				if (shouldUseTemplatedUserOperation(resource, operation.id)) {
+					const requestMode =
+						operation.id === templatedUserCreateId
+							? toRequestMode(this.getNodeParameter(requestModeKey(templatedUserCreateId), itemIndex))
+							: undefined;
+
+					const userUpdateReadOnlyFields = new Set<string>([
+						'user-presence-status',
+						'active-calls-total-current',
+						'account-status',
+						'created-datetime',
+						'last-modified-datetime',
+					]);
+
+					const method = toHttpRequestMethod(operation.method);
+					let body: IDataObject | undefined;
+					if (operation.id === templatedUserCreateId) {
+						body = buildTemplatedBody(this, itemIndex, templatedUserCreateId, createUserRequiredFields, {
+							includeSynchronous: true,
+							requestMode,
+						});
+					} else if (operation.id === templatedUserUpdateId) {
+						body = buildTemplatedBody(this, itemIndex, templatedUserUpdateId, updateUserRequiredFields, {
+							includeSynchronous: false,
+							readOnlyFields: userUpdateReadOnlyFields,
+						});
+					}
+
+					const requestOptions = {
+						method,
+						url,
+						qs: Object.keys(queryParams).length ? (queryParams as IDataObject) : undefined,
+						body: method === 'GET' || method === 'DELETE' ? undefined : body,
+						returnFullResponse: true,
+					} as const;
+
+					let response: unknown;
+					try {
+						response = await netSapiensRequest(this, requestOptions);
+					} catch (error) {
+						if (operation.id === templatedUserCreateId && requestMode === 'sync') {
+							const fallbackBody = buildTemplatedBody(
+								this,
+								itemIndex,
+								templatedUserCreateId,
+								createUserRequiredFields,
+								{
+									includeSynchronous: true,
+									requestMode: 'asyncAck',
+								},
+							);
+							try {
+								response = await netSapiensRequest(this, {
+									...requestOptions,
+									body: fallbackBody,
+								});
+							} catch {
+								throw error;
+							}
+						} else {
+							throw error;
+						}
+					}
+
+					const statusCode = isFullHttpResponse(response)
+						? (response as unknown as { statusCode: number }).statusCode
+						: undefined;
+					const responseBody = isFullHttpResponse(response)
+						? (response as unknown as { body: unknown }).body
+						: response;
+
+					if (operation.id === templatedUserDeleteId) {
+						returnData.push({ json: toAcknowledgement(statusCode) });
+						continue;
+					}
+
+					if (operation.id === templatedUserUpdateId) {
+						if (statusCode === 200 && responseBody && typeof responseBody === 'object') {
+							returnData.push({ json: toIDataObject(responseBody) });
+						} else {
+							returnData.push({ json: toAcknowledgement(statusCode) });
+						}
+						continue;
+					}
+
+					if (operation.id === templatedUserCreateId) {
+						if (requestMode === 'sync') {
+							if (statusCode === 200 && responseBody && typeof responseBody === 'object') {
+								returnData.push({ json: toIDataObject(responseBody) });
+							} else {
+								returnData.push({ json: toAcknowledgement(statusCode) });
+							}
+							continue;
+						}
+
+						if (requestMode === 'asyncEcho') {
+							const submitted = buildTemplatedBody(
+								this,
+								itemIndex,
+								templatedUserCreateId,
+								createUserRequiredFields,
+								{ includeSynchronous: true, requestMode: 'asyncAck' },
+							);
+							returnData.push({
+								json: {
+									...submitted,
+									...toAcknowledgement(statusCode),
+								},
+							});
+							continue;
+						}
+
+						returnData.push({ json: toAcknowledgement(statusCode) });
+						continue;
+					}
+				}
 
 				const body = operation.hasRequestBody
 					? parseJsonBodyParameter(
