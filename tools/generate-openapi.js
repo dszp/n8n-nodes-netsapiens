@@ -152,7 +152,8 @@ function getSpecArg(argv) {
 	return undefined;
 }
 
-const defaultSpecPath = path.join(packageRoot, 'openapi', 'NetSapiens.v2.3.1.0.openapi.json');
+// const defaultSpecPath = path.join(packageRoot, 'openapi', 'NetSapiens.v2.3.1.0.openapi.json');
+const defaultSpecPath = path.join(packageRoot, 'openapi', 'netsapiens-api-v2-v45.0.json');
 const specArgValue = getSpecArg(process.argv.slice(2));
 const specPath = specArgValue
 	? path.resolve(packageRoot, specArgValue)

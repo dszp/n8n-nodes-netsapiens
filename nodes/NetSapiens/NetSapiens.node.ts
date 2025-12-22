@@ -2,6 +2,8 @@ import type {
 	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeListSearchItems,
+	INodeListSearchResult,
 	INodeExecutionData,
 	INodeProperties,
 	INodePropertyOptions,
@@ -26,15 +28,240 @@ type CacheEntry = {
 	options: INodePropertyOptions[];
 };
 
+type ApiVersionCacheEntry = {
+	fetchedAtMs: number;
+	major?: number;
+	raw?: string;
+};
+
 const resellersCacheByBaseUrl = new Map<string, CacheEntry>();
 const domainsCacheByBaseUrl = new Map<string, CacheEntry>();
 const usersCacheByBaseUrlAndDomain = new Map<string, CacheEntry>();
+const apiVersionCacheByBaseUrl = new Map<string, ApiVersionCacheEntry>();
 
 const loadOptionsTtlMs = 15 * 60 * 1000;
+
+function parseApiVersionMajor(version: unknown): number | undefined {
+	if (typeof version === 'number' && Number.isFinite(version)) {
+		return Math.trunc(version);
+	}
+	if (typeof version !== 'string') {
+		return undefined;
+	}
+	const trimmed = version.trim();
+	if (!trimmed) {
+		return undefined;
+	}
+	const majorText = trimmed.split('.')[0];
+	const major = Number.parseInt(majorText, 10);
+	return Number.isFinite(major) ? major : undefined;
+}
+
+async function getServerApiVersion(
+	context: IExecuteFunctions,
+	baseUrl: string,
+	options?: { refresh?: boolean },
+): Promise<ApiVersionCacheEntry> {
+	const refresh = Boolean(options?.refresh);
+	const now = Date.now();
+	const cached = apiVersionCacheByBaseUrl.get(baseUrl);
+	if (!refresh && cached && now - cached.fetchedAtMs < loadOptionsTtlMs) {
+		return cached;
+	}
+
+	try {
+		const url = `${baseUrl}/version`;
+		const response = await netSapiensRequest(context, {
+			method: toHttpRequestMethod('GET'),
+			url,
+		});
+		const data = response as Record<string, unknown>;
+		const raw =
+			(typeof data?.apiversion === 'string' || typeof data?.apiversion === 'number')
+				? String(data.apiversion)
+				: (typeof data?.apiVersion === 'string' || typeof data?.apiVersion === 'number')
+					? String(data.apiVersion)
+					: (typeof data?.['api-version'] === 'string' || typeof data?.['api-version'] === 'number')
+						? String(data['api-version'])
+						: undefined;
+
+		const major = parseApiVersionMajor(raw);
+		const entry: ApiVersionCacheEntry = { fetchedAtMs: now, major, raw };
+		apiVersionCacheByBaseUrl.set(baseUrl, entry);
+		return entry;
+	} catch {
+		const entry: ApiVersionCacheEntry = { fetchedAtMs: now };
+		apiVersionCacheByBaseUrl.set(baseUrl, entry);
+		return entry;
+	}
+}
+
+function getErrorText(error: unknown): string {
+	if (!error) {
+		return '';
+	}
+	if (typeof error === 'string') {
+		return error;
+	}
+	if (error instanceof Error) {
+		return error.message;
+	}
+	if (typeof error === 'object') {
+		const value = error as Record<string, unknown>;
+		const parts = [value.errorMessage, value.errorDescription, value.message]
+			.filter((v): v is string => typeof v === 'string' && Boolean(v.trim()))
+			.map((v) => v.trim());
+		return parts.join(' | ');
+	}
+	return '';
+}
+
+function isExpressionLikeValue(value: string): boolean {
+	const trimmed = value.trim();
+	if (!trimmed) {
+		return false;
+	}
+
+	return trimmed.startsWith('=') || trimmed.includes('{{');
+}
+
+function extractLocatorValue(value: unknown): string {
+	if (typeof value === 'string' || typeof value === 'number') {
+		return String(value);
+	}
+
+	if (value && typeof value === 'object' && 'value' in value) {
+		const raw = (value as { value?: unknown }).value;
+		if (typeof raw === 'string' || typeof raw === 'number') {
+			return String(raw);
+		}
+	}
+
+	return '';
+}
 
 const resellerAwareOperationIds = operations
 	.filter((op) => op.parameters.some((p) => p.in === 'query' && p.name === 'reseller'))
 	.map((op) => op.id);
+
+function isOffsetPaginationOperation(op: (typeof operations)[number]): boolean {
+	if (op.method !== 'GET') {
+		return false;
+	}
+
+	const start = op.parameters.find((p) => p.in === 'query' && p.name === 'start');
+	const limit = op.parameters.find((p) => p.in === 'query' && p.name === 'limit');
+	if (!start || !limit) {
+		return false;
+	}
+
+	const startDescription = (start.description ?? '').toLowerCase();
+	if (start.schemaType === 'string' || startDescription.includes('timestamp')) {
+		return false;
+	}
+
+	return true;
+}
+
+const offsetPaginatedOperationIds = new Set(
+	operations.filter((op) => isOffsetPaginationOperation(op)).map((op) => op.id),
+);
+
+function isLimitOnlyPaginationOperation(op: (typeof operations)[number]): boolean {
+	if (op.method !== 'GET') {
+		return false;
+	}
+
+	const limit = op.parameters.find((p) => p.in === 'query' && p.name === 'limit');
+	if (!limit) {
+		return false;
+	}
+
+	const start = op.parameters.find((p) => p.in === 'query' && p.name === 'start');
+	if (start) {
+		return false;
+	}
+
+	if (limit.schemaType === 'string') {
+		return false;
+	}
+
+	return true;
+}
+
+const limitOnlyPaginatedOperationIds = new Set(
+	operations.filter((op) => isLimitOnlyPaginationOperation(op)).map((op) => op.id),
+);
+
+const limitOnlyReturnAllLimit = 100000;
+
+function paginationParamName(operationId: string, name: string): string {
+	return `${operationId}__pagination__${name}`;
+}
+
+function toOptionalNumber(value: unknown): number | undefined {
+	if (value === null || value === undefined || value === '') {
+		return undefined;
+	}
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		return value;
+	}
+	if (typeof value === 'string') {
+		const parsed = Number(value);
+		return Number.isFinite(parsed) ? parsed : undefined;
+	}
+	return undefined;
+}
+
+async function requestAllPages(
+	context: IExecuteFunctions,
+	request: {
+		url: string;
+		qs?: IDataObject;
+		limit?: number;
+	},
+): Promise<IDataObject[]> {
+	const pageSize = typeof request.limit === 'number' && request.limit > 0 ? request.limit : 100;
+	const aggregated: IDataObject[] = [];
+	let start = 0;
+	let loops = 0;
+
+	while (loops < 1000) {
+		loops++;
+		const response = await netSapiensRequest(context, {
+			method: toHttpRequestMethod('GET'),
+			url: request.url,
+			qs: {
+				...(request.qs ?? {}),
+				start,
+				limit: pageSize,
+			},
+		});
+
+		const normalized = normalizeArrayResponse(response);
+		if (
+			loops === 1 &&
+			normalized.length === 0 &&
+			response !== null &&
+			response !== undefined &&
+			!Array.isArray(response)
+		) {
+			return [toIDataObject(response)];
+		}
+
+		const page = normalized.map((entry) => toIDataObject(entry));
+		for (const entry of page) {
+			aggregated.push(entry);
+		}
+
+		if (page.length < pageSize) {
+			break;
+		}
+		start += page.length;
+	}
+
+	return aggregated;
+}
 
 function normalizeResourceName(resource: string): string {
 	return resource.trim();
@@ -257,6 +484,54 @@ function getFirstStringField(value: Record<string, unknown>, keys: string[]): st
 	return '';
 }
 
+function formatUserLabel(value: Record<string, unknown>, userId: string): string {
+	const serviceCode = getFirstStringField(value, ['service-code', 'service_code', 'serviceCode']);
+	const subscriberType = getFirstStringField(value, [
+		'subscriber-type',
+		'subscriber_type',
+		'subscriberType',
+		'type',
+	]);
+	const loginUsername = getFirstStringField(value, [
+		'login-username',
+		'login_username',
+		'loginUsername',
+		'login',
+		'username',
+	]);
+	const firstName = getFirstStringField(value, [
+		'name-first-name',
+		'name_first_name',
+		'firstName',
+		'first_name',
+	]);
+	const lastName = getFirstStringField(value, [
+		'name-last-name',
+		'name_last_name',
+		'lastName',
+		'last_name',
+	]);
+
+	const fullName = [firstName, lastName].filter(Boolean).join(' ');
+
+	if (serviceCode) {
+		return `${userId} - ${serviceCode.toUpperCase()}`;
+	}
+
+	const parts = [userId];
+	if (subscriberType) {
+		parts.push(subscriberType);
+	}
+	if (loginUsername) {
+		parts.push(loginUsername);
+	}
+	if (fullName) {
+		parts.push(fullName);
+	}
+
+	return parts.join(' - ');
+}
+
 function buildOperationParameterFields(): INodeProperties[] {
 	const fields: INodeProperties[] = [];
 
@@ -281,40 +556,254 @@ function buildOperationParameterFields(): INodeProperties[] {
 			if (param.in === 'query' && param.name === 'reseller' && effectiveResource !== 'Resellers') {
 				continue;
 			}
+			if (
+				offsetPaginatedOperationIds.has(op.id) &&
+				param.in === 'query' &&
+				(param.name === 'start' || param.name === 'limit')
+			) {
+				continue;
+			}
 
-			const isDomainParam = param.name === 'domain' && effectiveResource !== 'Domains';
+			const isDomainParam = param.in === 'path' && param.name === 'domain';
 			const isDomainScopedUserParam =
 				param.in === 'path' &&
 				param.name === 'user' &&
 				Boolean(domainParamFieldName) &&
 				effectiveResource !== 'Users';
 
+			const fieldDisplayOptions = {
+				show: {
+					resource: [effectiveResource],
+					operation: [op.id],
+				},
+			};
+			const fieldName = parameterName(op.id, param.in, param.name);
+
+			if (op.id === 'GetAuditlog' && param.in === 'query' && param.name === 'target-domain') {
+				fields.push({
+					displayName: 'Target Domain',
+					name: fieldName,
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+					modes: [
+						{
+							displayName: 'Target Domain',
+							name: 'list',
+							type: 'list',
+							placeholder: 'Select a domain...',
+							typeOptions: {
+								searchListMethod: 'searchDomains',
+								searchable: true,
+								searchFilterRequired: false,
+							},
+						},
+						{
+							displayName: 'Target Domain',
+							name: 'name',
+							type: 'string',
+							placeholder: 'e.g. example.com',
+						},
+					],
+				});
+				continue;
+			}
+
+			if (op.id === 'GetAuditlog' && param.in === 'query' && param.name === 'target-user') {
+				fields.push({
+					displayName: 'Target User',
+					name: fieldName,
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+					modes: [
+						{
+							displayName: 'Target User',
+							name: 'list',
+							type: 'list',
+							placeholder: 'Select a user...',
+							typeOptions: {
+								searchListMethod: 'searchUsersForDomain',
+								searchable: true,
+								searchFilterRequired: false,
+							},
+						},
+						{
+							displayName: 'Target User',
+							name: 'id',
+							type: 'string',
+							placeholder: 'e.g. 1001',
+						},
+					],
+				});
+				continue;
+			}
+
+			if (
+				op.id === 'GetAuditlog' &&
+				param.in === 'query' &&
+				(param.name === 'datetime-start' || param.name === 'datetime-end')
+			) {
+				fields.push({
+					displayName: formatParameterLabel(param.name),
+					name: fieldName,
+					type: 'dateTime',
+					default: '',
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+				});
+				continue;
+			}
+
+			if (limitOnlyPaginatedOperationIds.has(op.id) && param.in === 'query' && param.name === 'limit') {
+				const returnAllName = paginationParamName(op.id, 'returnAll');
+				fields.push({
+					displayName: 'Return All Results',
+					name: returnAllName,
+					type: 'boolean',
+					default: true,
+					displayOptions: fieldDisplayOptions,
+					description: 'Whether to fetch all results by increasing the API limit',
+				});
+				fields.push({
+					displayName: formatParameterLabel(param.name),
+					name: fieldName,
+					type: guessFieldType(param.schemaType),
+					default: '',
+					required: param.required,
+					displayOptions: {
+						show: {
+							resource: [effectiveResource],
+							operation: [op.id],
+							[returnAllName]: [false],
+						},
+					},
+					description: param.description,
+				});
+				continue;
+			}
+
+			if (isDomainParam) {
+				fields.push({
+					displayName: formatParameterLabel(param.name),
+					name: fieldName,
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+					modes: [
+						{
+							displayName: 'Domain',
+							name: 'list',
+							type: 'list',
+							placeholder: 'Select a domain...',
+							typeOptions: {
+								searchListMethod: 'searchDomains',
+								searchable: true,
+								searchFilterRequired: false,
+							},
+						},
+						{
+							displayName: 'Domain',
+							name: 'name',
+							type: 'string',
+							placeholder: 'e.g. example.com',
+						},
+					],
+				});
+				continue;
+			}
+
+			if (isDomainScopedUserParam) {
+				fields.push({
+					displayName: formatParameterLabel(param.name),
+					name: fieldName,
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+					modes: [
+						{
+							displayName: 'User',
+							name: 'list',
+							type: 'list',
+							placeholder: 'Select a user...',
+							typeOptions: {
+								searchListMethod: 'searchUsersForDomain',
+								searchable: true,
+								searchFilterRequired: false,
+							},
+						},
+						{
+							displayName: 'User',
+							name: 'id',
+							type: 'string',
+							placeholder: 'e.g. 1001',
+						},
+					],
+				});
+				continue;
+			}
+
 			fields.push({
 				displayName: formatParameterLabel(param.name),
-				name: parameterName(op.id, param.in, param.name),
-				type:
-					isDomainParam || isDomainScopedUserParam
-						? 'options'
-						: guessFieldType(param.schemaType),
-				typeOptions: isDomainParam
-					? {
-							loadOptionsMethod: 'getDomains',
-						}
-					: isDomainScopedUserParam
-						? {
-								loadOptionsMethod: 'getUsersForDomain',
-								loadOptionsDependsOn: [domainParamFieldName as string],
-							}
-						: undefined,
+				name: fieldName,
+				type: guessFieldType(param.schemaType),
 				default: '',
 				required: param.required,
+				displayOptions: fieldDisplayOptions,
+				description: param.description,
+			});
+		}
+
+		if (offsetPaginatedOperationIds.has(op.id)) {
+			const returnAllName = paginationParamName(op.id, 'returnAll');
+			fields.push({
+				displayName: 'Return All Results',
+				name: returnAllName,
+				type: 'boolean',
+				default: true,
 				displayOptions: {
 					show: {
 						resource: [effectiveResource],
 						operation: [op.id],
 					},
 				},
-				description: param.description,
+				description: 'Whether to fetch all results by paging through the API',
+			});
+
+			fields.push({
+				displayName: 'Start',
+				name: paginationParamName(op.id, 'start'),
+				type: 'number',
+				default: 0,
+				displayOptions: {
+					show: {
+						resource: [effectiveResource],
+						operation: [op.id],
+						[returnAllName]: [false],
+					},
+				},
+			});
+			fields.push({
+				displayName: 'Limit',
+				name: paginationParamName(op.id, 'limit'),
+				type: 'number',
+				default: 100,
+				displayOptions: {
+					show: {
+						resource: [effectiveResource],
+						operation: [op.id],
+						[returnAllName]: [false],
+					},
+				},
 			});
 		}
 
@@ -557,11 +1046,16 @@ export class NetSapiens implements INodeType {
 			},
 
 			async getDomains(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const credentials = (await this.getCredentials('netSapiensApi')) as {
-					server?: string;
-					baseUrl?: string;
-				};
-				const baseUrl = resolveBaseUrl(credentials);
+				let baseUrl = '';
+				try {
+					const credentials = (await this.getCredentials('netSapiensApi')) as {
+						server?: string;
+						baseUrl?: string;
+					};
+					baseUrl = resolveBaseUrl(credentials);
+				} catch {
+					return [];
+				}
 				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
 
 				const now = Date.now();
@@ -570,13 +1064,35 @@ export class NetSapiens implements INodeType {
 					return cached.options;
 				}
 
-				const url = `${baseUrl}/domains`;
-				const response = await netSapiensRequest(this, {
-					method: toHttpRequestMethod('GET'),
-					url,
-				});
+				let items: unknown[];
+				try {
+					const url = `${baseUrl}/domains`;
+					const page = await netSapiensRequest(this, {
+						method: toHttpRequestMethod('GET'),
+						url,
+						qs: { start: 0, limit: 100 },
+					});
+					items = normalizeArrayResponse(page);
 
-				const items = normalizeArrayResponse(response);
+					if (items.length === 100) {
+						let start = 100;
+						while (start < 100000) {
+							const nextPage = await netSapiensRequest(this, {
+								method: toHttpRequestMethod('GET'),
+								url,
+								qs: { start, limit: 100 },
+							});
+							const nextItems = normalizeArrayResponse(nextPage);
+							items.push(...nextItems);
+							if (nextItems.length < 100) {
+								break;
+							}
+							start += nextItems.length;
+						}
+					}
+				} catch {
+					return cached?.options ?? [];
+				}
 
 				const options: INodePropertyOptions[] = [];
 
@@ -601,22 +1117,37 @@ export class NetSapiens implements INodeType {
 			},
 
 			async getUsersForDomain(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const credentials = (await this.getCredentials('netSapiensApi')) as {
-					server?: string;
-					baseUrl?: string;
-				};
-				const baseUrl = resolveBaseUrl(credentials);
+				let baseUrl = '';
+				try {
+					const credentials = (await this.getCredentials('netSapiensApi')) as {
+						server?: string;
+						baseUrl?: string;
+					};
+					baseUrl = resolveBaseUrl(credentials);
+				} catch {
+					return [];
+				}
 
-				const operationId = this.getCurrentNodeParameter('operation') as string | undefined;
+				let operationId: string | undefined;
+				try {
+					operationId = this.getCurrentNodeParameter('operation') as string | undefined;
+				} catch {
+					return [];
+				}
 				if (!operationId) {
 					return [];
 				}
 
 				const domainParamName = parameterName(operationId, 'path', 'domain');
-				const domainValue = this.getCurrentNodeParameter(domainParamName) as string | undefined;
-				const domain = typeof domainValue === 'string' ? domainValue.trim() : '';
+				let domainParam: unknown;
+				try {
+					domainParam = this.getCurrentNodeParameter(domainParamName, { rawExpressions: true });
+				} catch {
+					return [];
+				}
+				const domain = extractLocatorValue(domainParam).trim();
 
-				if (!domain) {
+				if (!domain || isExpressionLikeValue(domain)) {
 					return [];
 				}
 
@@ -629,11 +1160,16 @@ export class NetSapiens implements INodeType {
 					return cached.options;
 				}
 
-				const url = `${baseUrl}/domains/${encodeURIComponent(domain)}/users`;
-				const response = await netSapiensRequest(this, {
-					method: toHttpRequestMethod('GET'),
-					url,
-				});
+				let response: unknown;
+				try {
+					const url = `${baseUrl}/domains/${encodeURIComponent(domain)}/users`;
+					response = await netSapiensRequest(this, {
+						method: toHttpRequestMethod('GET'),
+						url,
+					});
+				} catch {
+					return cached?.options ?? [];
+				}
 
 				const items = normalizeArrayResponse(response);
 				const options: INodePropertyOptions[] = [];
@@ -657,46 +1193,7 @@ export class NetSapiens implements INodeType {
 						continue;
 					}
 
-					const serviceCode = getFirstStringField(value, [
-						'service-code',
-						'service_code',
-						'serviceCode',
-					]);
-					const loginUsername = getFirstStringField(value, [
-						'login-username',
-						'login_username',
-						'loginUsername',
-						'login',
-						'username',
-					]);
-					const firstName = getFirstStringField(value, [
-						'name-first-name',
-						'name_first_name',
-						'firstName',
-						'first_name',
-					]);
-					const lastName = getFirstStringField(value, [
-						'name-last-name',
-						'name_last_name',
-						'lastName',
-						'last_name',
-					]);
-
-					const fullName = [firstName, lastName].filter(Boolean).join(' ');
-
-					let label = '';
-					if (serviceCode) {
-						label = `${userId} - ${serviceCode.toUpperCase()}`;
-					} else {
-						const parts = [userId];
-						if (loginUsername) {
-							parts.push(loginUsername);
-						}
-						if (fullName) {
-							parts.push(fullName);
-						}
-						label = parts.join(' - ');
-					}
+					const label = formatUserLabel(value, userId);
 
 					options.push({
 						name: label,
@@ -707,6 +1204,212 @@ export class NetSapiens implements INodeType {
 				options.sort((a, b) => a.name.localeCompare(b.name));
 				usersCacheByBaseUrlAndDomain.set(cacheKey, { fetchedAtMs: now, options });
 				return options;
+			},
+		},
+		listSearch: {
+			async searchDomains(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				let baseUrl = '';
+				try {
+					const credentials = (await this.getCredentials('netSapiensApi')) as {
+						server?: string;
+						baseUrl?: string;
+					};
+					baseUrl = resolveBaseUrl(credentials);
+				} catch {
+					return { results: [] };
+				}
+				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
+				const now = Date.now();
+				const cached = domainsCacheByBaseUrl.get(baseUrl);
+
+				let options: INodePropertyOptions[] = [];
+				if (!shouldRefresh && cached && cached.options.length && now - cached.fetchedAtMs < loadOptionsTtlMs) {
+					options = cached.options;
+				} else {
+					let items: unknown[];
+					try {
+						const url = `${baseUrl}/domains`;
+						const page = await netSapiensRequest(this, {
+							method: toHttpRequestMethod('GET'),
+							url,
+							qs: { start: 0, limit: 100 },
+						});
+						items = normalizeArrayResponse(page);
+
+						if (items.length === 100) {
+							let start = 100;
+							while (start < 100000) {
+								const nextPage = await netSapiensRequest(this, {
+									method: toHttpRequestMethod('GET'),
+									url,
+									qs: { start, limit: 100 },
+								});
+								const nextItems = normalizeArrayResponse(nextPage);
+								items.push(...nextItems);
+								if (nextItems.length < 100) {
+									break;
+								}
+								start += nextItems.length;
+							}
+						}
+					} catch {
+						options = cached?.options ?? [];
+						items = [];
+					}
+
+					const next: INodePropertyOptions[] = [];
+					for (const item of items) {
+						const value = item as Record<string, unknown>;
+						const domain = value.domain;
+						if (typeof domain !== 'string' || !domain) {
+							continue;
+						}
+						next.push({ name: domain, value: domain });
+					}
+
+					next.sort((a, b) => a.name.localeCompare(b.name));
+					domainsCacheByBaseUrl.set(baseUrl, { fetchedAtMs: now, options: next });
+					options = next;
+				}
+
+				const normalizedFilter = typeof filter === 'string' ? filter.trim().toLowerCase() : '';
+				const results = options
+					.filter((entry: INodePropertyOptions) => {
+						if (!normalizedFilter) {
+							return true;
+						}
+						return entry.name.toLowerCase().includes(normalizedFilter);
+					})
+					.slice(0, 200)
+					.map(
+						(entry: INodePropertyOptions): INodeListSearchItems => ({
+							name: entry.name,
+							value: entry.value,
+						}),
+					);
+
+				return { results };
+			},
+
+			async searchUsersForDomain(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				let baseUrl = '';
+				try {
+					const credentials = (await this.getCredentials('netSapiensApi')) as {
+						server?: string;
+						baseUrl?: string;
+					};
+					baseUrl = resolveBaseUrl(credentials);
+				} catch {
+					return { results: [] };
+				}
+
+				let operationId: string | undefined;
+				try {
+					operationId = this.getCurrentNodeParameter('operation') as string | undefined;
+				} catch {
+					return { results: [] };
+				}
+				if (!operationId) {
+					return { results: [] };
+				}
+
+				const domainParamNames = [
+					parameterName(operationId, 'path', 'domain'),
+					parameterName(operationId, 'query', 'target-domain'),
+				];
+				let domainParam: unknown;
+				for (const domainParamName of domainParamNames) {
+					try {
+						domainParam = this.getCurrentNodeParameter(domainParamName, { rawExpressions: true });
+					} catch {
+						continue;
+					}
+					if (domainParam !== undefined && domainParam !== null && domainParam !== '') {
+						break;
+					}
+				}
+				const domain = extractLocatorValue(domainParam).trim();
+				if (!domain || isExpressionLikeValue(domain)) {
+					return { results: [] };
+				}
+
+				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
+				const cacheKey = `${baseUrl}::${domain}`;
+				const now = Date.now();
+				const cached = usersCacheByBaseUrlAndDomain.get(cacheKey);
+
+				let options: INodePropertyOptions[] = [];
+				if (!shouldRefresh && cached && cached.options.length && now - cached.fetchedAtMs < loadOptionsTtlMs) {
+					options = cached.options;
+				} else {
+					let response: unknown;
+					try {
+						const url = `${baseUrl}/domains/${encodeURIComponent(domain)}/users`;
+						response = await netSapiensRequest(this, {
+							method: toHttpRequestMethod('GET'),
+							url,
+						});
+					} catch {
+						options = cached?.options ?? [];
+					}
+
+					if (response !== undefined) {
+						const items = normalizeArrayResponse(response);
+						const next: INodePropertyOptions[] = [];
+
+						for (const item of items) {
+							const value = item as Record<string, unknown>;
+							const rawUser =
+								value.user ??
+								value.id ??
+								value.uid ??
+								value.userId ??
+								value.userID ??
+								value.user_id ??
+								value.userid ??
+								value.userID;
+							const userId =
+								typeof rawUser === 'string' || typeof rawUser === 'number'
+									? String(rawUser).trim()
+									: '';
+							if (!userId) {
+								continue;
+							}
+
+							const label = formatUserLabel(value, userId);
+
+							next.push({ name: label, value: userId });
+						}
+
+						next.sort((a, b) => a.name.localeCompare(b.name));
+						usersCacheByBaseUrlAndDomain.set(cacheKey, { fetchedAtMs: now, options: next });
+						options = next;
+					}
+				}
+
+				const normalizedFilter = typeof filter === 'string' ? filter.trim().toLowerCase() : '';
+				const results = options
+					.filter((entry: INodePropertyOptions) => {
+						if (!normalizedFilter) {
+							return true;
+						}
+						return entry.name.toLowerCase().includes(normalizedFilter);
+					})
+					.slice(0, 200)
+					.map(
+						(entry: INodePropertyOptions): INodeListSearchItems => ({
+							name: entry.name,
+							value: entry.value,
+						}),
+					);
+
+				return { results };
 			},
 		},
 	};
@@ -773,6 +1476,23 @@ export class NetSapiens implements INodeType {
 					throw new NodeOperationError(this.getNode(), `Unknown operation: ${operationId}`, { itemIndex });
 				}
 
+				if (operation.id === 'GetAuditlog') {
+					const shouldRefresh = Boolean(this.getNodeParameter('refreshOptions', itemIndex, false));
+					const apiVersion = await getServerApiVersion(this, baseUrl, { refresh: shouldRefresh });
+					if (typeof apiVersion.major === 'number' && apiVersion.major < 45) {
+						const raw = apiVersion.raw ? ` (${apiVersion.raw})` : '';
+						throw new NodeOperationError(
+							this.getNode(),
+							`Audit Log is not supported by this NetSapiens server (API version < 45${raw}).`,
+							{
+								itemIndex,
+								description:
+									'Your server does not implement the Audit Log endpoint used by this operation. Upgrade the server/API to version 45+ or remove this operation from the workflow.',
+							},
+						);
+					}
+				}
+
 				const override = operationOverrides[operation.id];
 				const effectiveResource = override?.resource ?? operation.resource;
 
@@ -806,18 +1526,32 @@ export class NetSapiens implements INodeType {
 					if (param.in === 'query' && param.name === 'reseller' && effectiveResource !== 'Resellers') {
 						continue;
 					}
+					if (
+						offsetPaginatedOperationIds.has(operation.id) &&
+						param.in === 'query' &&
+						(param.name === 'start' || param.name === 'limit')
+					) {
+						continue;
+					}
 
 					const value = this.getNodeParameter(
 						parameterName(operation.id, param.in, param.name),
 						itemIndex,
 						'',
 					) as unknown;
+					const effectiveValue =
+						param.name === 'domain' ||
+						param.name === 'user' ||
+						param.name === 'target-domain' ||
+						param.name === 'target-user'
+							? (extractLocatorValue(value) || '')
+							: value;
 
 					if (param.in === 'path') {
-						pathParams[param.name] = value;
+						pathParams[param.name] = effectiveValue;
 					} else {
-						if (value !== '' && value !== undefined && value !== null) {
-							queryParams[param.name] = value;
+						if (effectiveValue !== '' && effectiveValue !== undefined && effectiveValue !== null) {
+							queryParams[param.name] = effectiveValue;
 						}
 					}
 				}
@@ -843,6 +1577,46 @@ export class NetSapiens implements INodeType {
 						)
 					: undefined;
 
+				if (limitOnlyPaginatedOperationIds.has(operation.id) && operation.method === 'GET') {
+					const returnAll = Boolean(
+						this.getNodeParameter(paginationParamName(operation.id, 'returnAll'), itemIndex, true),
+					);
+					if (returnAll) {
+						queryParams.limit = limitOnlyReturnAllLimit;
+					}
+				}
+
+				if (offsetPaginatedOperationIds.has(operation.id) && operation.method === 'GET') {
+					const returnAll = Boolean(
+						this.getNodeParameter(paginationParamName(operation.id, 'returnAll'), itemIndex, true),
+					);
+
+					if (returnAll) {
+						const aggregated = await requestAllPages(this, {
+							url,
+							qs: Object.keys(queryParams).length ? (queryParams as IDataObject) : undefined,
+						});
+
+						for (const entry of aggregated) {
+							returnData.push({ json: entry });
+						}
+						continue;
+					}
+
+					const manualStart = toOptionalNumber(
+						this.getNodeParameter(paginationParamName(operation.id, 'start'), itemIndex, 0),
+					);
+					const manualLimit = toOptionalNumber(
+						this.getNodeParameter(paginationParamName(operation.id, 'limit'), itemIndex, 100),
+					);
+					if (manualStart !== undefined) {
+						queryParams.start = manualStart;
+					}
+					if (manualLimit !== undefined) {
+						queryParams.limit = manualLimit;
+					}
+				}
+
 				const response = await netSapiensRequest(this, {
 					method: toHttpRequestMethod(operation.method),
 					url,
@@ -860,6 +1634,25 @@ export class NetSapiens implements INodeType {
 			} catch (error) {
 				if (error instanceof NodeOperationError) {
 					throw error;
+				}
+
+				if (operationId === 'GetAuditlog') {
+					const shouldRefresh = Boolean(this.getNodeParameter('refreshOptions', itemIndex, false));
+					const apiVersion = await getServerApiVersion(this, baseUrl, { refresh: shouldRefresh });
+					const errorText = getErrorText(error);
+					if (/no\s+route\s+found\s*\[92\]/i.test(errorText) || /no\s+route\s+found/i.test(errorText)) {
+						const versionText = apiVersion.raw
+							? ` Detected API version: ${apiVersion.raw}.`
+							: ' Unable to detect API version from /version.';
+						throw new NodeOperationError(
+							this.getNode(),
+							'Audit Log is not supported by this NetSapiens server.',
+							{
+								itemIndex,
+								description: `The server returned "No Route Found" for the Audit Log endpoint. This operation requires NetSapiens API version 45+.${versionText}`,
+							},
+						);
+					}
 				}
 
 				throw new NodeOperationError(this.getNode(), error as Error, { itemIndex });
