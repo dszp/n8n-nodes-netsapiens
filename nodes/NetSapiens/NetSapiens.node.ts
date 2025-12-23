@@ -176,6 +176,7 @@ const userCommonFields: Array<{
 		name: 'user',
 		type: 'string',
 		default: '',
+		description: 'User extension number',
 		required: true,
 	},
 	{
@@ -633,6 +634,36 @@ function buildTemplatedUserFields(): INodeProperties[] {
 		description: 'Select the optional fields to add to the form',
 	});
 
+	fields.push({
+		displayName: 'Domain',
+		name: parameterName(templatedUserCreateId, 'path', 'domain'),
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		displayOptions: {
+			show: shouldShowTemplatedField(templatedUserResource, templatedUserCreateId),
+		},
+		modes: [
+			{
+				displayName: 'Domain',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a domain...',
+				typeOptions: {
+					searchListMethod: 'searchDomains',
+					searchable: true,
+					searchFilterRequired: false,
+				},
+			},
+			{
+				displayName: 'Domain',
+				name: 'name',
+				type: 'string',
+				placeholder: 'e.g. example.com',
+			},
+		],
+	});
+
 	for (const field of userCommonFields) {
 		const isRequired = createUserRequiredFields.includes(field.name);
 		const shouldShow = isRequired
@@ -747,13 +778,18 @@ function buildTemplatedUserFields(): INodeProperties[] {
 			: field.options;
 		const updateDefault = isOptionsField ? '__USE_CURRENT__' : field.default;
 
+		const updateDescription = isRequired
+			? `${field.description ? `${field.description} ` : ''}Required. Leave empty to keep the current value`
+			: field.description;
+
 		fields.push({
 			displayName: field.displayName,
 			name: operationBodyFieldKey(templatedUserUpdateId, field.name),
 			type: field.type,
 			default: updateDefault,
+			required: isRequired,
 			displayOptions: { show: shouldShow },
-			description: field.description,
+			description: updateDescription,
 			options: updateOptions,
 			typeOptions: field.typeOptions,
 		});
@@ -848,6 +884,25 @@ function toAcknowledgement(statusCode: number | undefined): IDataObject {
 	};
 }
 
+function normalizePrefillKey(key: string): string {
+	return key.toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function getPrefillValue(source: Record<string, unknown>, fieldName: string): unknown {
+	if (fieldName in source) {
+		return source[fieldName];
+	}
+
+	const target = normalizePrefillKey(fieldName);
+	for (const [key, value] of Object.entries(source)) {
+		if (normalizePrefillKey(key) === target) {
+			return value;
+		}
+	}
+
+	return undefined;
+}
+
 function buildTemplatedBody(
 	context: IExecuteFunctions,
 	itemIndex: number,
@@ -890,7 +945,7 @@ function buildTemplatedBody(
 			value = toOptionalString(raw);
 		}
 		if (value === undefined && options.prefillEnabled && options.prefillSource) {
-			const fromExisting = options.prefillSource[fieldName];
+			const fromExisting = getPrefillValue(options.prefillSource, fieldName);
 			if (numericUserFields.has(fieldName)) {
 				value = toOptionalNumberValue(fromExisting);
 			} else if (typeof fromExisting === 'string' || typeof fromExisting === 'number') {
@@ -1434,9 +1489,10 @@ function buildOperationParameterFields(): INodeProperties[] {
 				continue;
 			}
 			if (
-				(op.id === templatedUserUpdateId || op.id === templatedUserDeleteId) &&
+				(op.id === templatedUserCreateId || op.id === templatedUserUpdateId || op.id === templatedUserDeleteId) &&
 				param.in === 'path' &&
-				(param.name === 'domain' || param.name === 'user')
+				((op.id === templatedUserCreateId && param.name === 'domain') ||
+					(op.id !== templatedUserCreateId && (param.name === 'domain' || param.name === 'user')))
 			) {
 				continue;
 			}
@@ -2568,7 +2624,7 @@ export class NetSapiens implements INodeType {
 						: response;
 
 					if (operation.id === templatedUserDeleteId) {
-						returnData.push({ json: toAcknowledgement(statusCode) });
+						returnData.push({ json: { ...toAcknowledgement(statusCode), response: toIDataObject(responseBody) } });
 						continue;
 					}
 
@@ -2576,7 +2632,9 @@ export class NetSapiens implements INodeType {
 						if (statusCode === 200 && responseBody && typeof responseBody === 'object') {
 							returnData.push({ json: toIDataObject(responseBody) });
 						} else {
-							returnData.push({ json: toAcknowledgement(statusCode) });
+							returnData.push({
+								json: { ...toAcknowledgement(statusCode), response: toIDataObject(responseBody) },
+							});
 						}
 						continue;
 					}
@@ -2586,7 +2644,9 @@ export class NetSapiens implements INodeType {
 							if (statusCode === 200 && responseBody && typeof responseBody === 'object') {
 								returnData.push({ json: toIDataObject(responseBody) });
 							} else {
-								returnData.push({ json: toAcknowledgement(statusCode) });
+								returnData.push({
+									json: { ...toAcknowledgement(statusCode), response: toIDataObject(responseBody) },
+								});
 							}
 							continue;
 						}
@@ -2608,7 +2668,9 @@ export class NetSapiens implements INodeType {
 							continue;
 						}
 
-						returnData.push({ json: toAcknowledgement(statusCode) });
+						returnData.push({
+							json: { ...toAcknowledgement(statusCode), response: toIDataObject(responseBody) },
+						});
 						continue;
 					}
 				}
