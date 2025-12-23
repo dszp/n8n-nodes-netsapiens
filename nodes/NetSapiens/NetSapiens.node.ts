@@ -2,7 +2,6 @@ import type {
 	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeListSearchItems,
 	INodeListSearchResult,
 	INodeExecutionData,
 	INodeProperties,
@@ -45,6 +44,7 @@ const sitesCacheByBaseUrlAndDomain = new Map<string, CacheEntry>();
 const emergencyAddressesCacheByBaseUrlAndDomain = new Map<string, CacheEntry>();
 const holidayCountriesCacheByBaseUrl = new Map<string, CacheEntry>();
 const holidayRegionsCacheByBaseUrl = new Map<string, CacheEntry>();
+const wsServersCacheByBaseUrl = new Map<string, CacheEntry>();
 const apiVersionCacheByBaseUrl = new Map<string, ApiVersionCacheEntry>();
 
 const loadOptionsTtlMs = 15 * 60 * 1000;
@@ -1715,6 +1715,38 @@ function buildOperationParameterFields(): INodeProperties[] {
 			};
 			const fieldName = parameterName(op.id, param.in, param.name);
 
+			if ((param.in === 'path' || param.in === 'query') && param.name === 'server') {
+				fields.push({
+					displayName: formatParameterLabel(param.name),
+					name: fieldName,
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+					modes: [
+						{
+							displayName: 'Server',
+							name: 'list',
+							type: 'list',
+							placeholder: 'Select a server...',
+							typeOptions: {
+								searchListMethod: 'searchWsServers',
+								searchable: true,
+								searchFilterRequired: false,
+							},
+						},
+						{
+							displayName: 'Server',
+							name: 'name',
+							type: 'string',
+							placeholder: 'e.g. core1-iad.ucaas.network',
+						},
+					],
+				});
+				continue;
+			}
+
 			if (op.id === 'GetHolidaysByBy' && param.in === 'path' && param.name === 'country') {
 				fields.push({
 					displayName: 'Country',
@@ -2287,11 +2319,8 @@ export class NetSapiens implements INodeType {
 			{
 				displayName: 'Reseller Name or ID',
 				name: 'reseller',
-				type: 'options',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getResellers',
-				},
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
 				displayOptions: {
 					show: {
 						operation: resellerAwareOperationIds,
@@ -2300,8 +2329,26 @@ export class NetSapiens implements INodeType {
 						resource: ['Resellers', 'raw'],
 					},
 				},
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				description: 'Choose from the list, or enter an ID manually',
+				modes: [
+					{
+						displayName: 'Reseller',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a reseller...',
+						typeOptions: {
+							searchListMethod: 'searchResellers',
+							searchable: true,
+							searchFilterRequired: false,
+						},
+					},
+					{
+						displayName: 'Reseller',
+						name: 'id',
+						type: 'string',
+						placeholder: 'e.g. WLP',
+					},
+				],
 			},
 			{
 				displayName: 'Resource',
@@ -2461,7 +2508,7 @@ export class NetSapiens implements INodeType {
 						continue;
 					}
 
-					const name = typeof description === 'string' && description ? description : reseller;
+					const name = typeof description === 'string' && description ? `${description} - ${reseller}` : reseller;
 					options.push({
 						name,
 						value: reseller,
@@ -2610,8 +2657,9 @@ export class NetSapiens implements INodeType {
 						value.user ??
 						value.id ??
 						value.uid ??
-						value.user_id ??
 						value.userId ??
+						value.userID ??
+						value.user_id ??
 						value.userid ??
 						value.userID;
 					const userId =
@@ -2637,10 +2685,7 @@ export class NetSapiens implements INodeType {
 			},
 		},
 		listSearch: {
-			async searchDomains(
-				this: ILoadOptionsFunctions,
-				filter?: string,
-			): Promise<INodeListSearchResult> {
+			async searchDomains(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
 				let baseUrl = '';
 				try {
 					const credentials = (await this.getCredentials('netSapiensApi')) as {
@@ -2651,6 +2696,7 @@ export class NetSapiens implements INodeType {
 				} catch {
 					return { results: [] };
 				}
+
 				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
 				const now = Date.now();
 				const cached = domainsCacheByBaseUrl.get(baseUrl);
@@ -2690,37 +2736,27 @@ export class NetSapiens implements INodeType {
 						items = [];
 					}
 
-					const next: INodePropertyOptions[] = [];
-					for (const item of items) {
-						const value = item as Record<string, unknown>;
-						const domain = value.domain;
-						if (typeof domain !== 'string' || !domain) {
-							continue;
+					if (items.length) {
+						const next: INodePropertyOptions[] = [];
+						for (const item of items) {
+							const value = item as Record<string, unknown>;
+							const domain = typeof value.domain === 'string' ? value.domain.trim() : '';
+							if (!domain) {
+								continue;
+							}
+							next.push({ name: formatDomainLabel(value, domain), value: domain });
 						}
-						const name = formatDomainLabel(value, domain);
-						next.push({ name, value: domain });
+						next.sort((a, b) => a.name.localeCompare(b.name));
+						domainsCacheByBaseUrl.set(baseUrl, { fetchedAtMs: now, options: next });
+						options = next;
 					}
-
-					next.sort((a, b) => a.name.localeCompare(b.name));
-					domainsCacheByBaseUrl.set(baseUrl, { fetchedAtMs: now, options: next });
-					options = next;
 				}
 
 				const normalizedFilter = typeof filter === 'string' ? filter.trim().toLowerCase() : '';
 				const results = options
-					.filter((entry: INodePropertyOptions) => {
-						if (!normalizedFilter) {
-							return true;
-						}
-						return entry.name.toLowerCase().includes(normalizedFilter);
-					})
+					.filter((entry) => (normalizedFilter ? entry.name.toLowerCase().includes(normalizedFilter) : true))
 					.slice(0, 200)
-					.map(
-						(entry: INodePropertyOptions): INodeListSearchItems => ({
-							name: entry.name,
-							value: entry.value,
-						}),
-					);
+					.map((entry) => ({ name: entry.name, value: entry.value }));
 
 				return { results };
 			},
@@ -2753,6 +2789,9 @@ export class NetSapiens implements INodeType {
 				const domainParamNames = [
 					parameterName(operationId, 'path', 'domain'),
 					parameterName(operationId, 'query', 'target-domain'),
+					parameterName(templatedUserCreateId, 'path', 'domain'),
+					parameterName(templatedUserUpdateId, 'path', 'domain'),
+					parameterName(templatedUserDeleteId, 'path', 'domain'),
 				];
 				let domainParam: unknown;
 				for (const domainParamName of domainParamNames) {
@@ -2788,12 +2827,12 @@ export class NetSapiens implements INodeType {
 						});
 					} catch {
 						options = cached?.options ?? [];
+						response = undefined;
 					}
 
 					if (response !== undefined) {
 						const items = normalizeArrayResponse(response);
 						const next: INodePropertyOptions[] = [];
-
 						for (const item of items) {
 							const value = item as Record<string, unknown>;
 							const rawUser =
@@ -2812,12 +2851,8 @@ export class NetSapiens implements INodeType {
 							if (!userId) {
 								continue;
 							}
-
-							const label = formatUserLabel(value, userId);
-
-							next.push({ name: label, value: userId });
+							next.push({ name: formatUserLabel(value, userId), value: userId });
 						}
-
 						next.sort((a, b) => a.name.localeCompare(b.name));
 						usersCacheByBaseUrlAndDomain.set(cacheKey, { fetchedAtMs: now, options: next });
 						options = next;
@@ -2826,19 +2861,9 @@ export class NetSapiens implements INodeType {
 
 				const normalizedFilter = typeof filter === 'string' ? filter.trim().toLowerCase() : '';
 				const results = options
-					.filter((entry: INodePropertyOptions) => {
-						if (!normalizedFilter) {
-							return true;
-						}
-						return entry.name.toLowerCase().includes(normalizedFilter);
-					})
+					.filter((entry) => (normalizedFilter ? entry.name.toLowerCase().includes(normalizedFilter) : true))
 					.slice(0, 200)
-					.map(
-						(entry: INodePropertyOptions): INodeListSearchItems => ({
-							name: entry.name,
-							value: entry.value,
-						}),
-					);
+					.map((entry) => ({ name: entry.name, value: entry.value }));
 
 				return { results };
 			},
@@ -2914,6 +2939,7 @@ export class NetSapiens implements INodeType {
 					if (response !== undefined) {
 						const items = normalizeArrayResponse(response);
 						const next: INodePropertyOptions[] = [];
+						next.push({ name: 'No Site Selected', value: '' });
 						for (const item of items) {
 							if (typeof item === 'string') {
 								const site = item.trim();
@@ -2933,7 +2959,11 @@ export class NetSapiens implements INodeType {
 							}
 							next.push({ name: site, value: site });
 						}
+						const head = next.shift();
 						next.sort((a, b) => a.name.localeCompare(b.name));
+						if (head) {
+							next.unshift(head);
+						}
 						sitesCacheByBaseUrlAndDomain.set(cacheKey, { fetchedAtMs: now, options: next });
 						options = next;
 					}
@@ -3033,10 +3063,22 @@ export class NetSapiens implements INodeType {
 							if (!id) {
 								continue;
 							}
-							const label =
-								(typeof value.description === 'string' && value.description.trim())
-									? `${id} - ${value.description.trim()}`
-									: id;
+							const description = typeof value.description === 'string' ? value.description.trim() : '';
+							const location = getFirstStringField(value, ['location', 'name', 'label', 'address-name', 'addressName']);
+							const address1 = getFirstStringField(value, [
+								'address1',
+								'address-1',
+								'street',
+								'street1',
+								'street_1',
+							]);
+							const city = getFirstStringField(value, ['city', 'town']);
+							const state = getFirstStringField(value, ['state', 'province', 'region']);
+							const postalCode = getFirstStringField(value, ['zip', 'postal', 'postal-code', 'postalCode']);
+							const parts = [description || location, address1, [city, state, postalCode].filter(Boolean).join(' ')].filter(
+								(part) => Boolean(part),
+							);
+							const label = parts.length ? `${id} - ${parts.join(' - ')}` : id;
 							next.push({ name: label, value: id });
 						}
 						next.sort((a, b) => a.name.localeCompare(b.name));
@@ -3278,6 +3320,125 @@ export class NetSapiens implements INodeType {
 
 				return { results };
 			},
+			async searchResellers(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				let baseUrl = '';
+				try {
+					const credentials = (await this.getCredentials('netSapiensApi')) as {
+						server?: string;
+						baseUrl?: string;
+					};
+					baseUrl = resolveBaseUrl(credentials);
+				} catch {
+					return { results: [] };
+				}
+
+				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
+				const now = Date.now();
+				const cached = resellersCacheByBaseUrl.get(baseUrl);
+
+				let options: INodePropertyOptions[] = [];
+				if (!shouldRefresh && cached && cached.options.length && now - cached.fetchedAtMs < loadOptionsTtlMs) {
+					options = cached.options;
+				} else {
+					let response: unknown;
+					try {
+						const url = `${baseUrl}/resellers`;
+						response = await netSapiensRequest(this, {
+							method: toHttpRequestMethod('GET'),
+							url,
+						});
+					} catch {
+						options = cached?.options ?? [];
+					}
+
+					if (response !== undefined) {
+						const items = normalizeArrayResponse(response);
+						const next: INodePropertyOptions[] = [];
+						for (const item of items) {
+							const value = item as Record<string, unknown>;
+							const reseller = typeof value.reseller === 'string' ? value.reseller.trim() : '';
+							if (!reseller) {
+								continue;
+							}
+							const description = typeof value.description === 'string' ? value.description.trim() : '';
+							const name = description && description !== reseller ? `${description} - ${reseller}` : reseller;
+							next.push({ name, value: reseller });
+						}
+						next.sort((a, b) => a.name.localeCompare(b.name));
+						resellersCacheByBaseUrl.set(baseUrl, { fetchedAtMs: now, options: next });
+						options = next;
+					}
+				}
+
+				const normalizedFilter = typeof filter === 'string' ? filter.trim().toLowerCase() : '';
+				const results = options
+					.filter((entry) => (normalizedFilter ? entry.name.toLowerCase().includes(normalizedFilter) : true))
+					.slice(0, 200)
+					.map((entry) => ({ name: entry.name, value: entry.value }));
+
+				return { results };
+			},
+
+			async searchWsServers(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				let baseUrl = '';
+				try {
+					const credentials = (await this.getCredentials('netSapiensApi')) as {
+						server?: string;
+						baseUrl?: string;
+					};
+					baseUrl = resolveBaseUrl(credentials);
+				} catch {
+					return { results: [] };
+				}
+
+				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
+				const now = Date.now();
+				const cached = wsServersCacheByBaseUrl.get(baseUrl);
+
+				let options: INodePropertyOptions[] = [];
+				if (!shouldRefresh && cached && cached.options.length && now - cached.fetchedAtMs < loadOptionsTtlMs) {
+					options = cached.options;
+				} else {
+					let response: unknown;
+					try {
+						const url = `${baseUrl}/configurations/${encodeURIComponent('WS_SERVERS')}`;
+						response = await netSapiensRequest(this, {
+							method: toHttpRequestMethod('GET'),
+							url,
+						});
+					} catch {
+						options = cached?.options ?? [];
+					}
+
+					if (response !== undefined) {
+						const items = normalizeArrayResponse(response);
+						const first = items.find((item) => item && typeof item === 'object') as Record<string, unknown> | undefined;
+						const raw = first?.['config-value'];
+						const rawValue = typeof raw === 'string' ? raw : '';
+						const servers = rawValue
+							.split(',')
+							.map((v) => v.trim())
+							.filter(Boolean);
+						const next: INodePropertyOptions[] = servers.map((server) => ({ name: server, value: server }));
+						wsServersCacheByBaseUrl.set(baseUrl, { fetchedAtMs: now, options: next });
+						options = next;
+					}
+				}
+
+				const normalizedFilter = typeof filter === 'string' ? filter.trim().toLowerCase() : '';
+				const results = options
+					.filter((entry) => (normalizedFilter ? entry.name.toLowerCase().includes(normalizedFilter) : true))
+					.slice(0, 200)
+					.map((entry) => ({ name: entry.name, value: entry.value }));
+
+				return { results };
+			},
 		},
 	};
 
@@ -3376,7 +3537,9 @@ export class NetSapiens implements INodeType {
 				const pathParams: Record<string, unknown> = {};
 				const queryParams: Record<string, unknown> = {};
 
-				const resellerSelection = this.getNodeParameter('reseller', itemIndex, '') as string;
+				const resellerRaw = this.getNodeParameter('reseller', itemIndex, '') as unknown;
+				const resellerSelection =
+					typeof resellerRaw === 'string' ? resellerRaw : extractLocatorValue(resellerRaw);
 				if (
 					resellerSelection &&
 					operation.parameters.some((p) => p.in === 'query' && p.name === 'reseller') &&
