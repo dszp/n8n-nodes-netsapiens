@@ -630,6 +630,7 @@ function buildTemplatedUserFields(): INodeProperties[] {
 		options: userCommonFields
 			.filter((f) => !createUserRequiredFields.includes(f.name))
 			.map((f) => ({ name: f.displayName, value: f.name })),
+		description: 'Select the optional fields to add to the form',
 	});
 
 	for (const field of userCommonFields) {
@@ -666,6 +667,66 @@ function buildTemplatedUserFields(): INodeProperties[] {
 		options: userCommonFields
 			.filter((f) => !updateUserRequiredFields.includes(f.name) && f.name !== 'user')
 			.map((f) => ({ name: f.displayName, value: f.name })),
+		description: 'Select the optional fields to add to the form',
+	});
+
+	fields.push({
+		displayName: 'Domain',
+		name: parameterName(templatedUserUpdateId, 'path', 'domain'),
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		displayOptions: {
+			show: shouldShowTemplatedField(templatedUserResource, templatedUserUpdateId),
+		},
+		modes: [
+			{
+				displayName: 'Domain',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a domain...',
+				typeOptions: {
+					searchListMethod: 'searchDomains',
+					searchable: true,
+					searchFilterRequired: false,
+				},
+			},
+			{
+				displayName: 'Domain',
+				name: 'name',
+				type: 'string',
+				placeholder: 'e.g. example.com',
+			},
+		],
+	});
+
+	fields.push({
+		displayName: 'User',
+		name: parameterName(templatedUserUpdateId, 'path', 'user'),
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		displayOptions: {
+			show: shouldShowTemplatedField(templatedUserResource, templatedUserUpdateId),
+		},
+		description: 'User extension number',
+		modes: [
+			{
+				displayName: 'User',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a user...',
+				typeOptions: {
+					searchListMethod: 'searchUsersForDomain',
+					searchable: true,
+					searchFilterRequired: false,
+				},
+			},
+			{
+				displayName: 'User',
+				name: 'id',
+				type: 'string',
+				placeholder: 'e.g. 1001',
+			},
+		],
 	});
 
 	for (const field of userCommonFields) {
@@ -680,18 +741,82 @@ function buildTemplatedUserFields(): INodeProperties[] {
 				[updateOptionalFieldsName]: [field.name],
 			};
 
+		const isOptionsField = field.type === 'options';
+		const updateOptions = isOptionsField
+			? [{ name: 'Use Current Value', value: '__USE_CURRENT__' }, ...(field.options ?? [])]
+			: field.options;
+		const updateDefault = isOptionsField ? '__USE_CURRENT__' : field.default;
+
 		fields.push({
 			displayName: field.displayName,
 			name: operationBodyFieldKey(templatedUserUpdateId, field.name),
 			type: field.type,
-			default: field.default,
-			required: isRequired,
+			default: updateDefault,
 			displayOptions: { show: shouldShow },
 			description: field.description,
-			options: field.options,
+			options: updateOptions,
 			typeOptions: field.typeOptions,
 		});
 	}
+
+	fields.push({
+		displayName: 'Domain',
+		name: parameterName(templatedUserDeleteId, 'path', 'domain'),
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		displayOptions: {
+			show: shouldShowTemplatedField(templatedUserResource, templatedUserDeleteId),
+		},
+		modes: [
+			{
+				displayName: 'Domain',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a domain...',
+				typeOptions: {
+					searchListMethod: 'searchDomains',
+					searchable: true,
+					searchFilterRequired: false,
+				},
+			},
+			{
+				displayName: 'Domain',
+				name: 'name',
+				type: 'string',
+				placeholder: 'e.g. example.com',
+			},
+		],
+	});
+
+	fields.push({
+		displayName: 'User',
+		name: parameterName(templatedUserDeleteId, 'path', 'user'),
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		displayOptions: {
+			show: shouldShowTemplatedField(templatedUserResource, templatedUserDeleteId),
+		},
+		description: 'User extension number',
+		modes: [
+			{
+				displayName: 'User',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a user...',
+				typeOptions: {
+					searchListMethod: 'searchUsersForDomain',
+					searchable: true,
+					searchFilterRequired: false,
+				},
+			},
+			{
+				displayName: 'User',
+				name: 'id',
+				type: 'string',
+				placeholder: 'e.g. 1001',
+			},
+		],
+	});
 
 	return fields;
 }
@@ -728,7 +853,13 @@ function buildTemplatedBody(
 	itemIndex: number,
 	operationId: string,
 	requiredFields: string[],
-	options: { includeSynchronous?: boolean; requestMode?: RequestMode; readOnlyFields?: Set<string> },
+	options: {
+		includeSynchronous?: boolean;
+		requestMode?: RequestMode;
+		readOnlyFields?: Set<string>;
+		prefillSource?: Record<string, unknown>;
+		prefillEnabled?: boolean;
+	},
 ): IDataObject {
 	const selected = new Set<string>();
 	for (const key of requiredFields) {
@@ -751,15 +882,35 @@ function buildTemplatedBody(
 		}
 
 		let value: unknown;
-		if (numericUserFields.has(fieldName)) {
+		if (raw === '__USE_CURRENT__') {
+			value = undefined;
+		} else if (numericUserFields.has(fieldName)) {
 			value = toOptionalNumberValue(raw);
 		} else {
 			value = toOptionalString(raw);
+		}
+		if (value === undefined && options.prefillEnabled && options.prefillSource) {
+			const fromExisting = options.prefillSource[fieldName];
+			if (numericUserFields.has(fieldName)) {
+				value = toOptionalNumberValue(fromExisting);
+			} else if (typeof fromExisting === 'string' || typeof fromExisting === 'number') {
+				value = toOptionalString(String(fromExisting));
+			}
 		}
 		if (value === undefined) {
 			continue;
 		}
 		body[fieldName] = value as IDataObject[''];
+	}
+
+	for (const requiredField of requiredFields) {
+		if (body[requiredField] === undefined) {
+			throw new NodeOperationError(
+				context.getNode(),
+				`Missing required field: ${requiredField}`,
+				{ itemIndex },
+			);
+		}
 	}
 
 	if (options.includeSynchronous) {
@@ -791,6 +942,10 @@ function getErrorText(error: unknown): string {
 		return parts.join(' | ');
 	}
 	return '';
+}
+
+function isResourceLocatorListMode(value: unknown): boolean {
+	return Boolean(value) && typeof value === 'object' && (value as { mode?: unknown }).mode === 'list';
 }
 
 function isExpressionLikeValue(value: string): boolean {
@@ -1276,6 +1431,13 @@ function buildOperationParameterFields(): INodeProperties[] {
 		for (const param of op.parameters) {
 			const isPathOrQuery = param.in === 'path' || param.in === 'query';
 			if (!isPathOrQuery) {
+				continue;
+			}
+			if (
+				(op.id === templatedUserUpdateId || op.id === templatedUserDeleteId) &&
+				param.in === 'path' &&
+				(param.name === 'domain' || param.name === 'user')
+			) {
 				continue;
 			}
 
@@ -2325,9 +2487,40 @@ export class NetSapiens implements INodeType {
 							requestMode,
 						});
 					} else if (operation.id === templatedUserUpdateId) {
+						const domainParam = this.getNodeParameter(
+							parameterName(templatedUserUpdateId, 'path', 'domain'),
+							itemIndex,
+							'',
+						) as unknown;
+						const userParam = this.getNodeParameter(
+							parameterName(templatedUserUpdateId, 'path', 'user'),
+							itemIndex,
+							'',
+						) as unknown;
+
+						const domain = extractLocatorValue(domainParam);
+						const user = extractLocatorValue(userParam);
+
+						let prefillSource: Record<string, unknown> | undefined;
+						if (isResourceLocatorListMode(userParam) && domain && user) {
+							try {
+								const existing = await netSapiensRequest(this, {
+									method: toHttpRequestMethod('GET'),
+									url: `${baseUrl}/domains/${encodeURIComponent(domain)}/users/${encodeURIComponent(user)}`,
+								});
+								if (existing && typeof existing === 'object' && !Array.isArray(existing)) {
+									prefillSource = existing as Record<string, unknown>;
+								}
+							} catch {
+								prefillSource = undefined;
+							}
+						}
+
 						body = buildTemplatedBody(this, itemIndex, templatedUserUpdateId, updateUserRequiredFields, {
 							includeSynchronous: false,
 							readOnlyFields: userUpdateReadOnlyFields,
+							prefillEnabled: Boolean(prefillSource),
+							prefillSource,
 						});
 					}
 
