@@ -41,6 +41,10 @@ type ApiVersionCacheEntry = {
 const resellersCacheByBaseUrl = new Map<string, CacheEntry>();
 const domainsCacheByBaseUrl = new Map<string, CacheEntry>();
 const usersCacheByBaseUrlAndDomain = new Map<string, CacheEntry>();
+const sitesCacheByBaseUrlAndDomain = new Map<string, CacheEntry>();
+const emergencyAddressesCacheByBaseUrlAndDomain = new Map<string, CacheEntry>();
+const holidayCountriesCacheByBaseUrl = new Map<string, CacheEntry>();
+const holidayRegionsCacheByBaseUrl = new Map<string, CacheEntry>();
 const apiVersionCacheByBaseUrl = new Map<string, ApiVersionCacheEntry>();
 
 const loadOptionsTtlMs = 15 * 60 * 1000;
@@ -673,6 +677,70 @@ function buildTemplatedUserFields(): INodeProperties[] {
 				[optionalFieldsName]: [field.name],
 			};
 
+		if (field.name === 'site') {
+			fields.push({
+				displayName: field.displayName,
+				name: operationBodyFieldKey(templatedUserCreateId, field.name),
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: isRequired,
+				displayOptions: { show: shouldShow },
+				description: 'Site within the selected domain. Choose from list or enter manually.',
+				modes: [
+					{
+						displayName: 'Site',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a site...',
+						typeOptions: {
+							searchListMethod: 'searchSitesForDomain',
+							searchable: true,
+							searchFilterRequired: false,
+						},
+					},
+					{
+						displayName: 'Site',
+						name: 'name',
+						type: 'string',
+						placeholder: 'e.g. Headquarters',
+					},
+				],
+			});
+			continue;
+		}
+
+		if (field.name === 'emergency-address-id') {
+			fields.push({
+				displayName: field.displayName,
+				name: operationBodyFieldKey(templatedUserCreateId, field.name),
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: isRequired,
+				displayOptions: { show: shouldShow },
+				description: 'Emergency address identifier. Choose from list or enter manually.',
+				modes: [
+					{
+						displayName: 'Emergency Address',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select an emergency address...',
+						typeOptions: {
+							searchListMethod: 'searchEmergencyAddressesForDomain',
+							searchable: true,
+							searchFilterRequired: false,
+						},
+					},
+					{
+						displayName: 'Emergency Address ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'e.g. 12345',
+					},
+				],
+			});
+			continue;
+		}
+
 		if (field.name === 'time-zone') {
 			fields.push({
 				displayName: field.displayName,
@@ -814,6 +882,70 @@ function buildTemplatedUserFields(): INodeProperties[] {
 		const updateDescription = isRequired
 			? `${field.description ? `${field.description} ` : ''}Required. Leave empty to keep the current value`
 			: field.description;
+
+		if (field.name === 'site') {
+			fields.push({
+				displayName: field.displayName,
+				name: operationBodyFieldKey(templatedUserUpdateId, field.name),
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: isRequired,
+				displayOptions: { show: shouldShow },
+				description: 'Site within the selected domain. Choose from list or enter manually.',
+				modes: [
+					{
+						displayName: 'Site',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a site...',
+						typeOptions: {
+							searchListMethod: 'searchSitesForDomain',
+							searchable: true,
+							searchFilterRequired: false,
+						},
+					},
+					{
+						displayName: 'Site',
+						name: 'name',
+						type: 'string',
+						placeholder: 'e.g. Headquarters',
+					},
+				],
+			});
+			continue;
+		}
+
+		if (field.name === 'emergency-address-id') {
+			fields.push({
+				displayName: field.displayName,
+				name: operationBodyFieldKey(templatedUserUpdateId, field.name),
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: isRequired,
+				displayOptions: { show: shouldShow },
+				description: 'Emergency address identifier. Choose from list or enter manually.',
+				modes: [
+					{
+						displayName: 'Emergency Address',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select an emergency address...',
+						typeOptions: {
+							searchListMethod: 'searchEmergencyAddressesForDomain',
+							searchable: true,
+							searchFilterRequired: false,
+						},
+					},
+					{
+						displayName: 'Emergency Address ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'e.g. 12345',
+					},
+				],
+			});
+			continue;
+		}
 
 		if (field.name === 'time-zone') {
 			fields.push({
@@ -1366,6 +1498,28 @@ function guessFieldType(schemaType: string | undefined): INodeProperties['type']
 	return 'string';
 }
 
+function isLikelyDateTimeParam(name: string): boolean {
+	const normalized = name.trim().toLowerCase();
+	if (!normalized) {
+		return false;
+	}
+
+	if (normalized.includes('datetime') || normalized.includes('date')) {
+		return true;
+	}
+
+	if (
+		normalized.includes('start_time') ||
+		normalized.includes('end_time') ||
+		normalized.includes('start-time') ||
+		normalized.includes('end-time')
+	) {
+		return true;
+	}
+
+	return false;
+}
+
 function toIDataObject(value: unknown): IDataObject {
 	if (value === null || value === undefined) {
 		return {};
@@ -1516,6 +1670,7 @@ function buildOperationParameterFields(): INodeProperties[] {
 			});
 		}
 		const hasDomainPathParam = op.parameters.some((p) => p.in === 'path' && p.name === 'domain');
+		const hasTargetDomainQueryParam = op.parameters.some((p) => p.in === 'query' && p.name === 'target-domain');
 		const domainParamFieldName = hasDomainPathParam
 			? parameterName(op.id, 'path', 'domain')
 			: undefined;
@@ -1559,6 +1714,295 @@ function buildOperationParameterFields(): INodeProperties[] {
 				},
 			};
 			const fieldName = parameterName(op.id, param.in, param.name);
+
+			if (op.id === 'GetHolidaysByBy' && param.in === 'path' && param.name === 'country') {
+				fields.push({
+					displayName: 'Country',
+					name: fieldName,
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+					modes: [
+						{
+							displayName: 'Country',
+							name: 'list',
+							type: 'list',
+							placeholder: 'Select a country...',
+							typeOptions: {
+								searchListMethod: 'searchHolidayCountries',
+								searchable: true,
+								searchFilterRequired: false,
+							},
+						},
+						{
+							displayName: 'Country',
+							name: 'code',
+							type: 'string',
+							placeholder: 'e.g. US',
+						},
+					],
+				});
+				continue;
+			}
+
+			if (op.id === 'GetHolidaysByByBy' && param.in === 'path' && param.name === 'country') {
+				fields.push({
+					displayName: 'Country',
+					name: fieldName,
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+					modes: [
+						{
+							displayName: 'Country',
+							name: 'list',
+							type: 'list',
+							placeholder: 'Select a country...',
+							typeOptions: {
+								searchListMethod: 'searchHolidayCountries',
+								searchable: true,
+								searchFilterRequired: false,
+							},
+						},
+						{
+							displayName: 'Country',
+							name: 'code',
+							type: 'string',
+							placeholder: 'e.g. US',
+						},
+					],
+				});
+				continue;
+			}
+
+			if (op.id === 'GetHolidaysByByBy' && param.in === 'path' && param.name === 'region') {
+				fields.push({
+					displayName: 'Region',
+					name: fieldName,
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+					modes: [
+						{
+							displayName: 'Region',
+							name: 'list',
+							type: 'list',
+							placeholder: 'Select a region...',
+							typeOptions: {
+								searchListMethod: 'searchHolidayRegions',
+								searchable: true,
+								searchFilterRequired: false,
+							},
+						},
+						{
+							displayName: 'Region',
+							name: 'code',
+							type: 'string',
+							placeholder: 'e.g. US-NY',
+						},
+					],
+				});
+				continue;
+			}
+
+			if (
+				(param.in === 'path' || param.in === 'query') &&
+				param.name === 'site' &&
+				(hasDomainPathParam || hasTargetDomainQueryParam)
+			) {
+				fields.push({
+					displayName: 'Site',
+					name: fieldName,
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+					modes: [
+						{
+							displayName: 'Site',
+							name: 'list',
+							type: 'list',
+							placeholder: 'Select a site...',
+							typeOptions: {
+								searchListMethod: 'searchSitesForDomain',
+								searchable: true,
+								searchFilterRequired: false,
+							},
+						},
+						{
+							displayName: 'Site',
+							name: 'name',
+							type: 'string',
+							placeholder: 'e.g. Headquarters',
+						},
+					],
+				});
+				continue;
+			}
+
+			if (param.in === 'query' && isLikelyDateTimeParam(param.name)) {
+				fields.push({
+					displayName: formatParameterLabel(param.name),
+					name: fieldName,
+					type: 'dateTime',
+					default: '',
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+				});
+				continue;
+			}
+
+			if (param.in === 'query' && param.name === 'type' && effectiveResource === 'CDR (Call History)') {
+				fields.push({
+					displayName: 'Type',
+					name: fieldName,
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+					modes: [
+						{
+							displayName: 'Type',
+							name: 'list',
+							type: 'list',
+							placeholder: 'Select a type (optional)...',
+							typeOptions: {
+								searchListMethod: 'searchCdrTypes',
+								searchable: true,
+								searchFilterRequired: false,
+							},
+						},
+						{
+							displayName: 'Type',
+							name: 'custom',
+							type: 'string',
+							placeholder: 'e.g. Inbound or 0',
+						},
+					],
+				});
+				continue;
+			}
+
+			if (param.in === 'query' && param.name === 'group' && op.id === 'GetDomainsByCdrs_2') {
+				fields.push({
+					displayName: 'Group (Department)',
+					name: fieldName,
+					type: guessFieldType(param.schemaType),
+					default: '',
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+				});
+				continue;
+			}
+
+			if (param.in === 'query' && param.name === 'type' && effectiveResource === 'Call Traces & Cradle to Grave') {
+				fields.push({
+					displayName: 'Type',
+					name: fieldName,
+					type: 'options',
+					default: 'csv',
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+					options: [
+						{ name: 'Call Trace', value: 'call_trace' },
+						{ name: 'Cradle to Grave', value: 'cradle_to_grave' },
+						{ name: 'CSV', value: 'csv' },
+					],
+				});
+				continue;
+			}
+
+			if (param.in === 'query' && param.name === 'download' && effectiveResource === 'Call Traces & Cradle to Grave') {
+				fields.push({
+					displayName: 'Download',
+					name: fieldName,
+					type: 'options',
+					default: '',
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: 'Choose whether to download the file or return Base64 in JSON',
+					options: [
+						{ name: 'Base64 in JSON', value: '' },
+						{ name: 'Download File', value: 'yes' },
+					],
+				});
+				continue;
+			}
+
+			if (op.id === 'GetAccesslog' && param.in === 'query' && param.name === 'target-domain') {
+				fields.push({
+					displayName: 'Target Domain',
+					name: fieldName,
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+					modes: [
+						{
+							displayName: 'Target Domain',
+							name: 'list',
+							type: 'list',
+							placeholder: 'Select a domain...',
+							typeOptions: {
+								searchListMethod: 'searchDomains',
+								searchable: true,
+								searchFilterRequired: false,
+							},
+						},
+						{
+							displayName: 'Target Domain',
+							name: 'name',
+							type: 'string',
+							placeholder: 'e.g. example.com',
+						},
+					],
+				});
+				continue;
+			}
+
+			if (op.id === 'GetAccesslog' && param.in === 'query' && param.name === 'target-user') {
+				fields.push({
+					displayName: 'Target User',
+					name: fieldName,
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+					modes: [
+						{
+							displayName: 'Target User',
+							name: 'list',
+							type: 'list',
+							placeholder: 'Select a user...',
+							typeOptions: {
+								searchListMethod: 'searchUsersForDomain',
+								searchable: true,
+								searchFilterRequired: false,
+							},
+						},
+						{
+							displayName: 'Target User',
+							name: 'id',
+							type: 'string',
+							placeholder: 'e.g. 1001',
+						},
+					],
+				});
+				continue;
+			}
 
 			if (op.id === 'GetAuditlog' && param.in === 'query' && param.name === 'target-domain') {
 				fields.push({
@@ -2399,6 +2843,237 @@ export class NetSapiens implements INodeType {
 				return { results };
 			},
 
+			async searchSitesForDomain(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				let baseUrl = '';
+				try {
+					const credentials = (await this.getCredentials('netSapiensApi')) as {
+						server?: string;
+						baseUrl?: string;
+					};
+					baseUrl = resolveBaseUrl(credentials);
+				} catch {
+					return { results: [] };
+				}
+
+				let operationId: string | undefined;
+				try {
+					operationId = this.getCurrentNodeParameter('operation') as string | undefined;
+				} catch {
+					return { results: [] };
+				}
+				if (!operationId) {
+					return { results: [] };
+				}
+
+				const domainParamNames = [
+					parameterName(operationId, 'path', 'domain'),
+					parameterName(operationId, 'query', 'target-domain'),
+					parameterName(templatedUserCreateId, 'path', 'domain'),
+					parameterName(templatedUserUpdateId, 'path', 'domain'),
+					parameterName(templatedUserDeleteId, 'path', 'domain'),
+				];
+				let domainParam: unknown;
+				for (const domainParamName of domainParamNames) {
+					try {
+						domainParam = this.getCurrentNodeParameter(domainParamName, { rawExpressions: true });
+					} catch {
+						continue;
+					}
+					if (domainParam !== undefined && domainParam !== null && domainParam !== '') {
+						break;
+					}
+				}
+				const domain = extractLocatorValue(domainParam).trim();
+				if (!domain || isExpressionLikeValue(domain)) {
+					return { results: [] };
+				}
+
+				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
+				const cacheKey = `${baseUrl}::${domain}`;
+				const now = Date.now();
+				const cached = sitesCacheByBaseUrlAndDomain.get(cacheKey);
+
+				let options: INodePropertyOptions[] = [];
+				if (!shouldRefresh && cached && cached.options.length && now - cached.fetchedAtMs < loadOptionsTtlMs) {
+					options = cached.options;
+				} else {
+					let response: unknown;
+					try {
+						const url = `${baseUrl}/domains/${encodeURIComponent(domain)}/sites/list`;
+						response = await netSapiensRequest(this, {
+							method: toHttpRequestMethod('GET'),
+							url,
+						});
+					} catch {
+						options = cached?.options ?? [];
+					}
+
+					if (response !== undefined) {
+						const items = normalizeArrayResponse(response);
+						const next: INodePropertyOptions[] = [];
+						for (const item of items) {
+							if (typeof item === 'string') {
+								const site = item.trim();
+								if (site) {
+									next.push({ name: site, value: site });
+								}
+								continue;
+							}
+							const value = item as Record<string, unknown>;
+							const rawSite = value.site ?? value.name ?? value.id;
+							const site =
+								typeof rawSite === 'string' || typeof rawSite === 'number'
+									? String(rawSite).trim()
+									: '';
+							if (!site) {
+								continue;
+							}
+							next.push({ name: site, value: site });
+						}
+						next.sort((a, b) => a.name.localeCompare(b.name));
+						sitesCacheByBaseUrlAndDomain.set(cacheKey, { fetchedAtMs: now, options: next });
+						options = next;
+					}
+				}
+
+				const normalizedFilter = typeof filter === 'string' ? filter.trim().toLowerCase() : '';
+				const results = options
+					.filter((entry) => (normalizedFilter ? entry.name.toLowerCase().includes(normalizedFilter) : true))
+					.slice(0, 200)
+					.map((entry) => ({ name: entry.name, value: entry.value }));
+
+				return { results };
+			},
+
+			async searchEmergencyAddressesForDomain(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				let baseUrl = '';
+				try {
+					const credentials = (await this.getCredentials('netSapiensApi')) as {
+						server?: string;
+						baseUrl?: string;
+					};
+					baseUrl = resolveBaseUrl(credentials);
+				} catch {
+					return { results: [] };
+				}
+
+				let operationId: string | undefined;
+				try {
+					operationId = this.getCurrentNodeParameter('operation') as string | undefined;
+				} catch {
+					return { results: [] };
+				}
+				if (!operationId) {
+					return { results: [] };
+				}
+
+				const domainParamNames = [
+					parameterName(operationId, 'path', 'domain'),
+					parameterName(operationId, 'query', 'target-domain'),
+					parameterName(templatedUserCreateId, 'path', 'domain'),
+					parameterName(templatedUserUpdateId, 'path', 'domain'),
+					parameterName(templatedUserDeleteId, 'path', 'domain'),
+				];
+				let domainParam: unknown;
+				for (const domainParamName of domainParamNames) {
+					try {
+						domainParam = this.getCurrentNodeParameter(domainParamName, { rawExpressions: true });
+					} catch {
+						continue;
+					}
+					if (domainParam !== undefined && domainParam !== null && domainParam !== '') {
+						break;
+					}
+				}
+				const domain = extractLocatorValue(domainParam).trim();
+				if (!domain || isExpressionLikeValue(domain)) {
+					return { results: [] };
+				}
+
+				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
+				const cacheKey = `${baseUrl}::${domain}`;
+				const now = Date.now();
+				const cached = emergencyAddressesCacheByBaseUrlAndDomain.get(cacheKey);
+
+				let options: INodePropertyOptions[] = [];
+				if (!shouldRefresh && cached && cached.options.length && now - cached.fetchedAtMs < loadOptionsTtlMs) {
+					options = cached.options;
+				} else {
+					let response: unknown;
+					try {
+						const url = `${baseUrl}/domains/${encodeURIComponent(domain)}/addresses`;
+						response = await netSapiensRequest(this, {
+							method: toHttpRequestMethod('GET'),
+							url,
+						});
+					} catch {
+						options = cached?.options ?? [];
+					}
+
+					if (response !== undefined) {
+						const items = normalizeArrayResponse(response);
+						const next: INodePropertyOptions[] = [];
+						for (const item of items) {
+							const value = item as Record<string, unknown>;
+							const rawId =
+								value['emergency-address-id'] ??
+								value.emergency_address_id ??
+								value.emergencyAddressId ??
+								value.address_id ??
+								value.addressId ??
+								value.id;
+							const id =
+								typeof rawId === 'string' || typeof rawId === 'number' ? String(rawId).trim() : '';
+							if (!id) {
+								continue;
+							}
+							const label =
+								(typeof value.description === 'string' && value.description.trim())
+									? `${id} - ${value.description.trim()}`
+									: id;
+							next.push({ name: label, value: id });
+						}
+						next.sort((a, b) => a.name.localeCompare(b.name));
+						emergencyAddressesCacheByBaseUrlAndDomain.set(cacheKey, { fetchedAtMs: now, options: next });
+						options = next;
+					}
+				}
+
+				const normalizedFilter = typeof filter === 'string' ? filter.trim().toLowerCase() : '';
+				const results = options
+					.filter((entry) => (normalizedFilter ? entry.name.toLowerCase().includes(normalizedFilter) : true))
+					.slice(0, 200)
+					.map((entry) => ({ name: entry.name, value: entry.value }));
+
+				return { results };
+			},
+
+			async searchCdrTypes(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
+				const options: INodePropertyOptions[] = [
+					{ name: 'Inbound', value: 'Inbound' },
+					{ name: 'Outbound', value: 'Outbound' },
+					{ name: 'On-net', value: 'On-net' },
+					{ name: 'Off-net', value: 'Off-net' },
+					{ name: 'Missed', value: 'Missed' },
+					{ name: 'Received', value: 'Received' },
+					{ name: '0', value: '0' },
+					{ name: '1', value: '1' },
+					{ name: '2', value: '2' },
+					{ name: '3', value: '3' },
+				];
+				const normalizedFilter = typeof filter === 'string' ? filter.trim().toLowerCase() : '';
+				const results = options
+					.filter((entry) => (normalizedFilter ? entry.name.toLowerCase().includes(normalizedFilter) : true))
+					.map((entry) => ({ name: entry.name, value: entry.value }));
+				return { results };
+			},
+
 			async searchTimeZones(
 				this: ILoadOptionsFunctions,
 				filter?: string,
@@ -2433,6 +3108,173 @@ export class NetSapiens implements INodeType {
 					.filter((tz) => (normalizedFilter ? tz.toLowerCase().includes(normalizedFilter) : true))
 					.slice(0, 200)
 					.map((tz) => ({ name: tz, value: tz }));
+
+				return { results };
+			},
+
+			async searchHolidayCountries(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				let baseUrl = '';
+				try {
+					const credentials = (await this.getCredentials('netSapiensApi')) as {
+						server?: string;
+						baseUrl?: string;
+					};
+					baseUrl = resolveBaseUrl(credentials);
+				} catch {
+					return { results: [] };
+				}
+
+				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
+				const now = Date.now();
+				const cached = holidayCountriesCacheByBaseUrl.get(baseUrl);
+
+				let options: INodePropertyOptions[] = [];
+				if (!shouldRefresh && cached && cached.options.length && now - cached.fetchedAtMs < loadOptionsTtlMs) {
+					options = cached.options;
+				} else {
+					let response: unknown;
+					try {
+						const url = `${baseUrl}/holidays/countries`;
+						response = await netSapiensRequest(this, {
+							method: toHttpRequestMethod('GET'),
+							url,
+						});
+					} catch {
+						options = cached?.options ?? [];
+					}
+
+					if (response !== undefined) {
+						const items = normalizeArrayResponse(response);
+						const next: INodePropertyOptions[] = [];
+						for (const item of items) {
+							const value = item as Record<string, unknown>;
+							const iso = value['iso-3166'];
+							const code = typeof iso === 'string' ? iso.trim() : '';
+							if (!code) {
+								continue;
+							}
+							const countryName = typeof value.country_name === 'string' ? value.country_name.trim() : '';
+							const flag = typeof value.flag_unicode === 'string' ? value.flag_unicode.trim() : '';
+							const nameParts = [code, countryName, flag].filter((part) => Boolean(part));
+							next.push({ name: nameParts.join(' - '), value: code });
+						}
+						holidayCountriesCacheByBaseUrl.set(baseUrl, { fetchedAtMs: now, options: next });
+						options = next;
+					}
+				}
+
+				const normalizedFilter = typeof filter === 'string' ? filter.trim().toLowerCase() : '';
+				const results = options
+					.filter((entry) => (normalizedFilter ? entry.name.toLowerCase().includes(normalizedFilter) : true))
+					.slice(0, 500)
+					.map((entry) => ({ name: entry.name, value: entry.value }));
+
+				return { results };
+			},
+
+			async searchHolidayRegions(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				let baseUrl = '';
+				try {
+					const credentials = (await this.getCredentials('netSapiensApi')) as {
+						server?: string;
+						baseUrl?: string;
+					};
+					baseUrl = resolveBaseUrl(credentials);
+				} catch {
+					return { results: [] };
+				}
+
+				let operationId: string | undefined;
+				try {
+					operationId = this.getCurrentNodeParameter('operation') as string | undefined;
+				} catch {
+					return { results: [] };
+				}
+				if (!operationId) {
+					return { results: [] };
+				}
+
+				let countryParam: unknown;
+				try {
+					countryParam = this.getCurrentNodeParameter(parameterName(operationId, 'path', 'country'), {
+						rawExpressions: true,
+					});
+				} catch {
+					countryParam = undefined;
+				}
+				const selectedCountry = extractLocatorValue(countryParam).trim();
+				const selectedCountryPrefix = selectedCountry ? `${selectedCountry} - ` : '';
+
+				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
+				const now = Date.now();
+				const cached = holidayRegionsCacheByBaseUrl.get(baseUrl);
+
+				let options: INodePropertyOptions[] = [];
+				if (!shouldRefresh && cached && cached.options.length && now - cached.fetchedAtMs < loadOptionsTtlMs) {
+					options = cached.options;
+				} else {
+					let response: unknown;
+					try {
+						const url = `${baseUrl}/holidays/regions`;
+						response = await netSapiensRequest(this, {
+							method: toHttpRequestMethod('GET'),
+							url,
+						});
+					} catch {
+						options = cached?.options ?? [];
+					}
+
+					if (response !== undefined) {
+						const items = normalizeArrayResponse(response);
+						const next: INodePropertyOptions[] = [];
+						const regionRoot = items.find((item) => item && typeof item === 'object') as
+							| Record<string, unknown>
+							| undefined;
+						const countryMaps = regionRoot ? Object.entries(regionRoot) : [];
+						for (const [countryCodeRaw, regionsRaw] of countryMaps) {
+							const countryCode = countryCodeRaw.trim();
+							if (!countryCode || !regionsRaw || typeof regionsRaw !== 'object') {
+								continue;
+							}
+							const regionEntries = Object.entries(regionsRaw as Record<string, unknown>);
+							for (const [regionCodeRaw, regionNameRaw] of regionEntries) {
+								const regionCode = regionCodeRaw.trim();
+								if (!regionCode) {
+									continue;
+								}
+								const regionName =
+									typeof regionNameRaw === 'string' ? regionNameRaw.trim() : String(regionNameRaw ?? '').trim();
+								next.push({
+									name: `${countryCode} - ${regionCode} - ${regionName}`,
+									value: regionCode,
+								});
+							}
+						}
+
+						holidayRegionsCacheByBaseUrl.set(baseUrl, { fetchedAtMs: now, options: next });
+						options = next;
+					}
+				}
+
+				const normalizedFilter = typeof filter === 'string' ? filter.trim().toLowerCase() : '';
+				const results = options
+					.filter((entry) => {
+						if (selectedCountryPrefix && !entry.name.startsWith(selectedCountryPrefix)) {
+							return false;
+						}
+						if (!normalizedFilter) {
+							return true;
+						}
+						return entry.name.toLowerCase().includes(normalizedFilter);
+					})
+					.slice(0, 500)
+					.map((entry) => ({ name: entry.name, value: entry.value }));
 
 				return { results };
 			},
@@ -2565,10 +3407,7 @@ export class NetSapiens implements INodeType {
 						'',
 					) as unknown;
 					const effectiveValue =
-						param.name === 'domain' ||
-						param.name === 'user' ||
-						param.name === 'target-domain' ||
-						param.name === 'target-user'
+						value && typeof value === 'object' && 'value' in (value as IDataObject)
 							? (extractLocatorValue(value) || '')
 							: value;
 
@@ -2784,10 +3623,10 @@ export class NetSapiens implements INodeType {
 					throw error;
 				}
 
+				const errorText = getErrorText(error);
 				if (operationId === 'GetAuditlog') {
 					const shouldRefresh = Boolean(this.getNodeParameter('refreshOptions', itemIndex, false));
 					const apiVersion = await getServerApiVersion(this, baseUrl, { refresh: shouldRefresh });
-					const errorText = getErrorText(error);
 					if (/no\s+route\s+found\s*\[92\]/i.test(errorText) || /no\s+route\s+found/i.test(errorText)) {
 						const versionText = apiVersion.raw
 							? ` Detected API version: ${apiVersion.raw}.`
@@ -2801,6 +3640,27 @@ export class NetSapiens implements INodeType {
 							},
 						);
 					}
+				}
+
+				if (/no\s+route\s+found\s*\[92\]/i.test(errorText) || /no\s+route\s+found/i.test(errorText)) {
+					const shouldRefresh = Boolean(this.getNodeParameter('refreshOptions', itemIndex, false));
+					const apiVersion = await getServerApiVersion(this, baseUrl, { refresh: shouldRefresh });
+					const versionText = apiVersion.raw
+						? ` Detected API version: ${apiVersion.raw}.`
+						: ' Unable to detect API version from /version.';
+
+					const operationDetails = operationMap[operationId as keyof typeof operationMap];
+					const method = operationDetails ? operationDetails.method : operationId;
+					const path = operationDetails ? operationDetails.path : '';
+
+					throw new NodeOperationError(
+						this.getNode(),
+						'This NetSapiens server does not support the requested endpoint.',
+						{
+							itemIndex,
+							description: `The server returned "No Route Found [92]" for ${method} ${path}.${versionText}`,
+						},
+					);
 				}
 
 				throw new NodeOperationError(this.getNode(), error as Error, { itemIndex });
