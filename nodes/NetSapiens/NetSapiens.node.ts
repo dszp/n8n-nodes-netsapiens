@@ -673,6 +673,39 @@ function buildTemplatedUserFields(): INodeProperties[] {
 				[optionalFieldsName]: [field.name],
 			};
 
+		if (field.name === 'time-zone') {
+			fields.push({
+				displayName: field.displayName,
+				name: operationBodyFieldKey(templatedUserCreateId, field.name),
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: isRequired,
+				displayOptions: { show: shouldShow },
+				description:
+					'Time zone identifier. Choose from list or enter manually if needed.',
+				modes: [
+					{
+						displayName: 'Time Zone',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a time zone...',
+						typeOptions: {
+							searchListMethod: 'searchTimeZones',
+							searchable: true,
+							searchFilterRequired: false,
+						},
+					},
+					{
+						displayName: 'Time Zone',
+						name: 'name',
+						type: 'string',
+						placeholder: 'e.g. America/New_York',
+					},
+				],
+			});
+			continue;
+		}
+
 		fields.push({
 			displayName: field.displayName,
 			name: operationBodyFieldKey(templatedUserCreateId, field.name),
@@ -782,6 +815,39 @@ function buildTemplatedUserFields(): INodeProperties[] {
 			? `${field.description ? `${field.description} ` : ''}Required. Leave empty to keep the current value`
 			: field.description;
 
+		if (field.name === 'time-zone') {
+			fields.push({
+				displayName: field.displayName,
+				name: operationBodyFieldKey(templatedUserUpdateId, field.name),
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: isRequired,
+				displayOptions: { show: shouldShow },
+				description:
+					'Time zone identifier. Choose from list or enter manually if needed.',
+				modes: [
+					{
+						displayName: 'Time Zone',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a time zone...',
+						typeOptions: {
+							searchListMethod: 'searchTimeZones',
+							searchable: true,
+							searchFilterRequired: false,
+						},
+					},
+					{
+						displayName: 'Time Zone',
+						name: 'name',
+						type: 'string',
+						placeholder: 'e.g. America/New_York',
+					},
+				],
+			});
+			continue;
+		}
+
 		fields.push({
 			displayName: field.displayName,
 			name: operationBodyFieldKey(templatedUserUpdateId, field.name),
@@ -884,25 +950,6 @@ function toAcknowledgement(statusCode: number | undefined): IDataObject {
 	};
 }
 
-function normalizePrefillKey(key: string): string {
-	return key.toLowerCase().replace(/[^a-z0-9]+/g, '');
-}
-
-function getPrefillValue(source: Record<string, unknown>, fieldName: string): unknown {
-	if (fieldName in source) {
-		return source[fieldName];
-	}
-
-	const target = normalizePrefillKey(fieldName);
-	for (const [key, value] of Object.entries(source)) {
-		if (normalizePrefillKey(key) === target) {
-			return value;
-		}
-	}
-
-	return undefined;
-}
-
 function buildTemplatedBody(
 	context: IExecuteFunctions,
 	itemIndex: number,
@@ -912,8 +959,6 @@ function buildTemplatedBody(
 		includeSynchronous?: boolean;
 		requestMode?: RequestMode;
 		readOnlyFields?: Set<string>;
-		prefillSource?: Record<string, unknown>;
-		prefillEnabled?: boolean;
 	},
 ): IDataObject {
 	const selected = new Set<string>();
@@ -931,6 +976,10 @@ function buildTemplatedBody(
 			continue;
 		}
 		const raw = context.getNodeParameter(operationBodyFieldKey(operationId, fieldName), itemIndex, '') as unknown;
+		const normalizedRaw =
+			raw && typeof raw === 'object' && 'value' in (raw as IDataObject)
+				? extractLocatorValue(raw)
+				: raw;
 		const fieldDef = userCommonFields.find((f) => f.name === fieldName);
 		if (!fieldDef) {
 			continue;
@@ -940,17 +989,9 @@ function buildTemplatedBody(
 		if (raw === '__USE_CURRENT__') {
 			value = undefined;
 		} else if (numericUserFields.has(fieldName)) {
-			value = toOptionalNumberValue(raw);
+			value = toOptionalNumberValue(normalizedRaw);
 		} else {
-			value = toOptionalString(raw);
-		}
-		if (value === undefined && options.prefillEnabled && options.prefillSource) {
-			const fromExisting = getPrefillValue(options.prefillSource, fieldName);
-			if (numericUserFields.has(fieldName)) {
-				value = toOptionalNumberValue(fromExisting);
-			} else if (typeof fromExisting === 'string' || typeof fromExisting === 'number') {
-				value = toOptionalString(String(fromExisting));
-			}
+			value = toOptionalString(normalizedRaw);
 		}
 		if (value === undefined) {
 			continue;
@@ -997,10 +1038,6 @@ function getErrorText(error: unknown): string {
 		return parts.join(' | ');
 	}
 	return '';
-}
-
-function isResourceLocatorListMode(value: unknown): boolean {
-	return Boolean(value) && typeof value === 'object' && (value as { mode?: unknown }).mode === 'list';
 }
 
 function isExpressionLikeValue(value: string): boolean {
@@ -2361,6 +2398,44 @@ export class NetSapiens implements INodeType {
 
 				return { results };
 			},
+
+			async searchTimeZones(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				const normalizedFilter = typeof filter === 'string' ? filter.trim().toLowerCase() : '';
+				let timeZones: string[] = [];
+				try {
+					timeZones = (Intl as unknown as { supportedValuesOf?: (key: string) => string[] })
+						.supportedValuesOf?.('timeZone')
+						?.slice() ?? [];
+				} catch {
+					timeZones = [];
+				}
+
+				if (timeZones.length === 0) {
+					timeZones = [
+						'UTC',
+						'America/New_York',
+						'America/Chicago',
+						'America/Denver',
+						'America/Los_Angeles',
+						'America/Phoenix',
+						'Europe/London',
+						'Europe/Berlin',
+						'Australia/Sydney',
+						'Asia/Tokyo',
+					];
+				}
+
+				timeZones.sort((a, b) => a.localeCompare(b));
+				const results = timeZones
+					.filter((tz) => (normalizedFilter ? tz.toLowerCase().includes(normalizedFilter) : true))
+					.slice(0, 200)
+					.map((tz) => ({ name: tz, value: tz }));
+
+				return { results };
+			},
 		},
 	};
 
@@ -2543,40 +2618,9 @@ export class NetSapiens implements INodeType {
 							requestMode,
 						});
 					} else if (operation.id === templatedUserUpdateId) {
-						const domainParam = this.getNodeParameter(
-							parameterName(templatedUserUpdateId, 'path', 'domain'),
-							itemIndex,
-							'',
-						) as unknown;
-						const userParam = this.getNodeParameter(
-							parameterName(templatedUserUpdateId, 'path', 'user'),
-							itemIndex,
-							'',
-						) as unknown;
-
-						const domain = extractLocatorValue(domainParam);
-						const user = extractLocatorValue(userParam);
-
-						let prefillSource: Record<string, unknown> | undefined;
-						if (isResourceLocatorListMode(userParam) && domain && user) {
-							try {
-								const existing = await netSapiensRequest(this, {
-									method: toHttpRequestMethod('GET'),
-									url: `${baseUrl}/domains/${encodeURIComponent(domain)}/users/${encodeURIComponent(user)}`,
-								});
-								if (existing && typeof existing === 'object' && !Array.isArray(existing)) {
-									prefillSource = existing as Record<string, unknown>;
-								}
-							} catch {
-								prefillSource = undefined;
-							}
-						}
-
 						body = buildTemplatedBody(this, itemIndex, templatedUserUpdateId, updateUserRequiredFields, {
 							includeSynchronous: false,
 							readOnlyFields: userUpdateReadOnlyFields,
-							prefillEnabled: Boolean(prefillSource),
-							prefillSource,
 						});
 					}
 
