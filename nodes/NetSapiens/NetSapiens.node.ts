@@ -1415,6 +1415,9 @@ function formatOperationLabel(resource: string, label: string): string {
 }
 
 function formatParameterLabel(name: string): string {
+	if (name.toLowerCase() === 'callid') {
+		return 'Call ID';
+	}
 	return toTitleCase(name);
 }
 
@@ -1714,6 +1717,38 @@ function buildOperationParameterFields(): INodeProperties[] {
 				},
 			};
 			const fieldName = parameterName(op.id, param.in, param.name);
+
+			if (param.in === 'path' && param.name === 'reseller') {
+				fields.push({
+					displayName: formatParameterLabel(param.name),
+					name: fieldName,
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+					modes: [
+						{
+							displayName: 'Reseller',
+							name: 'list',
+							type: 'list',
+							placeholder: 'Select a reseller...',
+							typeOptions: {
+								searchListMethod: 'searchResellers',
+								searchable: true,
+								searchFilterRequired: false,
+							},
+						},
+						{
+							displayName: 'Reseller',
+							name: 'id',
+							type: 'string',
+							placeholder: 'e.g. WLP',
+						},
+					],
+				});
+				continue;
+			}
 
 			if ((param.in === 'path' || param.in === 'query') && param.name === 'server') {
 				fields.push({
