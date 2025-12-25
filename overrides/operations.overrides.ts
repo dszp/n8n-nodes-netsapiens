@@ -13,6 +13,9 @@ export type OperationOverride = {
 };
 
 export const resourceOverrides: Record<string, ResourceOverride> = {
+	'Aduit Log': {
+		displayName: 'Audit Log',
+	},
 	Connections: {
 		displayName: 'Connections (Trunks)',
 	},

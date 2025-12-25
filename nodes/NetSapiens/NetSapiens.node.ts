@@ -3849,15 +3849,14 @@ export class NetSapiens implements INodeType {
 					returnData.push({ json: toIDataObject(response) });
 				}
 			} catch (error) {
-				if (error instanceof NodeOperationError) {
-					throw error;
-				}
-
 				const errorText = getErrorText(error);
+				const isNoRouteFound =
+					/no\s+route\s+found\s*\[92\]/i.test(errorText) || /no\s+route\s+found/i.test(errorText);
+
 				if (operationId === 'GetAuditlog') {
 					const shouldRefresh = Boolean(this.getNodeParameter('refreshOptions', itemIndex, false));
 					const apiVersion = await getServerApiVersion(this, baseUrl, { refresh: shouldRefresh });
-					if (/no\s+route\s+found\s*\[92\]/i.test(errorText) || /no\s+route\s+found/i.test(errorText)) {
+					if (isNoRouteFound) {
 						const versionText = apiVersion.raw
 							? ` Detected API version: ${apiVersion.raw}.`
 							: ' Unable to detect API version from /version.';
@@ -3872,7 +3871,7 @@ export class NetSapiens implements INodeType {
 					}
 				}
 
-				if (/no\s+route\s+found\s*\[92\]/i.test(errorText) || /no\s+route\s+found/i.test(errorText)) {
+				if (isNoRouteFound) {
 					const shouldRefresh = Boolean(this.getNodeParameter('refreshOptions', itemIndex, false));
 					const apiVersion = await getServerApiVersion(this, baseUrl, { refresh: shouldRefresh });
 					const versionText = apiVersion.raw
@@ -3891,6 +3890,10 @@ export class NetSapiens implements INodeType {
 							description: `The server returned "No Route Found [92]" for ${method} ${path}.${versionText}`,
 						},
 					);
+				}
+
+				if (error instanceof NodeOperationError) {
+					throw error;
 				}
 
 				throw new NodeOperationError(this.getNode(), error as Error, { itemIndex });
