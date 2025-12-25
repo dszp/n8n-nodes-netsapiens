@@ -1782,6 +1782,38 @@ function buildOperationParameterFields(): INodeProperties[] {
 				continue;
 			}
 
+			if (effectiveResource === 'Connections' && param.in === 'query' && param.name === 'domain') {
+				fields.push({
+					displayName: formatParameterLabel(param.name),
+					name: fieldName,
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: param.description,
+					modes: [
+						{
+							displayName: 'Domain',
+							name: 'list',
+							type: 'list',
+							placeholder: 'Select a domain...',
+							typeOptions: {
+								searchListMethod: 'searchDomains',
+								searchable: true,
+								searchFilterRequired: false,
+							},
+						},
+						{
+							displayName: 'Domain',
+							name: 'name',
+							type: 'string',
+							placeholder: 'e.g. example.com',
+						},
+					],
+				});
+				continue;
+			}
+
 			if (op.id === 'GetHolidaysByBy' && param.in === 'path' && param.name === 'country') {
 				fields.push({
 					displayName: 'Country',
