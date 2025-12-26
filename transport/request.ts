@@ -63,6 +63,7 @@ export async function netSapiensRequest(
 		qs?: IDataObject;
 		body?: unknown;
 		headers?: Record<string, string>;
+		returnFullResponse?: boolean;
 	},
 ): Promise<unknown> {
 	const options: IHttpRequestOptions = {
@@ -71,6 +72,7 @@ export async function netSapiensRequest(
 		qs: requestOptions.qs,
 		body: requestOptions.body as unknown as IDataObject,
 		headers: requestOptions.headers,
+		returnFullResponse: requestOptions.returnFullResponse,
 		json: true,
 	};
 

@@ -4,6 +4,31 @@ All notable changes to the n8n-nodes-netsapiens project will be documented in th
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.1] - 2025-12-25
+
+### Added
+
+- Added UI notices to clarify that "Search for Users in Domain" returns a maximum of 100 users (but allows for site filtering), and to point users to "Get Users in Domain" for complete lists using pagination, and vice versa.
+- Added support for showing Domain Description field in domain dropdowns to make choosing the correct one easier.
+- Added cached holiday country and region dropdown selectors for Timeframes/Holiday Information operations.
+- Added a cached WS_SERVERS-based Server dropdown (with manual entry) for call/CDR related operations.
+- Added "No Site Selected" option to Site dropdowns.
+- Improved Emergency Address dropdown labels to display more identifying details than only the ID.
+
+### Changed
+
+- Renamed resource "Connections" to "Connections (Trunks)".
+- Updated reseller selection UX to use searchable dropdowns with manual entry (including Quotas reseller path parameter).
+- Renamed any "Callid" field display label to "Call ID" across the node.
+
+### Fixed
+
+- Added friendly global error handling for "No Route Found [92]" responses (including server version when available).
+- Improved "No Route Found [92]" detection to also trigger when the underlying HTTP layer returns a NodeOperationError.
+- Fixed typo in generated resource display name so the UI shows "Audit Log" instead of "Aduit Log".
+- Fixed Holiday Region dropdown to populate correctly from the "Read List of Supported Regions" response.
+- Improved resourceLocator value extraction in execute() for path and query parameters.
+
 ## [0.2.0] - 2025-12-22
 
 ### Added

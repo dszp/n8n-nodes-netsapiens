@@ -12,6 +12,13 @@ export type OperationOverride = {
 	order?: number;
 };
 
-export const resourceOverrides: Record<string, ResourceOverride> = {};
+export const resourceOverrides: Record<string, ResourceOverride> = {
+	'Aduit Log': {
+		displayName: 'Audit Log',
+	},
+	Connections: {
+		displayName: 'Connections (Trunks)',
+	},
+};
 
 export const operationOverrides: Record<string, OperationOverride> = {};
