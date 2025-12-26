@@ -1887,6 +1887,9 @@ function buildOperationParameterFields(): INodeProperties[] {
 					required: param.required,
 					displayOptions: fieldDisplayOptions,
 					description: param.description,
+					typeOptions: {
+						loadOptionsDependsOn: [parameterName(op.id, 'path', 'country')],
+					},
 					modes: [
 						{
 							displayName: 'Region',
@@ -3340,11 +3343,43 @@ export class NetSapiens implements INodeType {
 					}
 
 					if (response !== undefined) {
-						const items = normalizeArrayResponse(response);
 						const next: INodePropertyOptions[] = [];
-						const regionRoot = items.find((item) => item && typeof item === 'object') as
-							| Record<string, unknown>
-							| undefined;
+
+						const isLikelyCountryMap = (value: unknown): value is Record<string, unknown> => {
+							if (!value || typeof value !== 'object' || Array.isArray(value)) {
+								return false;
+							}
+							const record = value as Record<string, unknown>;
+							const entries = Object.entries(record);
+							return entries.some(
+								([key, child]) => /^[A-Z]{2}$/i.test(key.trim()) && !!child && typeof child === 'object',
+							);
+						};
+
+						let regionRoot: Record<string, unknown> | undefined;
+						if (Array.isArray(response)) {
+							regionRoot = response.find((item) => isLikelyCountryMap(item)) as
+								| Record<string, unknown>
+								| undefined;
+						} else if (isLikelyCountryMap(response)) {
+							regionRoot = response;
+						} else if (response && typeof response === 'object') {
+							const record = response as Record<string, unknown>;
+							const candidates: unknown[] = [];
+							for (const key of ['regions', 'region', 'supportedRegions', 'supported-regions']) {
+								candidates.push(record[key]);
+							}
+							for (const key of ['items', 'data']) {
+								const value = record[key];
+								if (Array.isArray(value)) {
+									candidates.push(value.find((item) => item && typeof item === 'object'));
+								}
+							}
+							regionRoot = candidates.find((candidate) => isLikelyCountryMap(candidate)) as
+								| Record<string, unknown>
+								| undefined;
+						}
+
 						const countryMaps = regionRoot ? Object.entries(regionRoot) : [];
 						for (const [countryCodeRaw, regionsRaw] of countryMaps) {
 							const countryCode = countryCodeRaw.trim();

@@ -24,6 +24,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - Added friendly global error handling for "No Route Found [92]" responses (including server version when available).
+- Improved "No Route Found [92]" detection to also trigger when the underlying HTTP layer returns a NodeOperationError.
+- Fixed typo in generated resource display name so the UI shows "Audit Log" instead of "Aduit Log".
+- Fixed Holiday Region dropdown to populate correctly from the "Read List of Supported Regions" response.
 - Improved resourceLocator value extraction in execute() for path and query parameters.
 
 ## [0.2.0] - 2025-12-22
