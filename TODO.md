@@ -21,3 +21,6 @@ Nothing in this file is a commitment. Items may change, be re-prioritized, or be
 - Add a way to easily review [CDR Field Mappings](https://docs.ns-api.com/docs/cdr-field-mappings) within the node for easy reference.
 - Add a way to easily review [Application Mappings in Phone Numbers and Dial Rules](https://docs.ns-api.com/docs/application-mapping-in-phonenumbers-dialrules) within the node for easy reference.
 - Consider supporting access/refresh tokens for authentication via [`POST /tokens`](https://docs.ns-api.com/reference/post_tokens-1).
+
+ - Auto Attendant -> Read Specific Auto Attendant: Filter the list of users so only auto-attendants are displayed.
+ - Auto Attendant -> Read Specific Auto Attendant: Pull possible options for the Prompt field from the selected auto-attendant once selected, rather than requiring entry. Ensure the Prompt field is marked as required.
