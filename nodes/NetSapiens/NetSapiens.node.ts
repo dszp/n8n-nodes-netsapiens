@@ -15,6 +15,7 @@ import { operationMap, operations, resources } from '../../generated/openapi';
 import { operationOverrides, resourceOverrides } from '../../overrides/operations.overrides';
 import {
 	netSapiensRequest,
+	netSapiensRequestWithoutAuthentication,
 	replacePathParams,
 	resolveBaseUrl,
 	toHttpRequestMethod,
@@ -158,6 +159,10 @@ function toOptionalNumberValue(value: unknown): number | undefined {
 const templatedUserCreateId = 'CreateUser';
 const templatedUserUpdateId = 'UpdateUser';
 const templatedUserDeleteId = 'DeleteUser';
+
+const validateJwtOperationId = 'ValidateJwt';
+const authenticationJwtResource = 'Authentication/JWT (JSON Web Token)';
+const validateJwtTokenParamName = `${validateJwtOperationId}__token`;
 
 const templatedUserResource = 'Users';
 
@@ -1172,6 +1177,52 @@ function getErrorText(error: unknown): string {
 	return '';
 }
 
+function getHttpStatusCode(error: unknown): number | undefined {
+	if (!error || typeof error !== 'object') {
+		return undefined;
+	}
+
+	const record = error as Record<string, unknown>;
+	const directCandidates = [record.statusCode, record.httpCode, record.code];
+	for (const candidate of directCandidates) {
+		if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+			return candidate;
+		}
+		if (typeof candidate === 'string') {
+			const parsed = Number.parseInt(candidate.trim(), 10);
+			if (Number.isFinite(parsed)) {
+				return parsed;
+			}
+		}
+	}
+
+	const response = record.response;
+	if (response && typeof response === 'object') {
+		const responseStatus = (response as Record<string, unknown>).status;
+		if (typeof responseStatus === 'number' && Number.isFinite(responseStatus)) {
+			return responseStatus;
+		}
+	}
+
+	const cause = record.cause;
+	if (cause && typeof cause === 'object') {
+		const causeCode = getHttpStatusCode(cause);
+		if (typeof causeCode === 'number') {
+			return causeCode;
+		}
+	}
+
+	return undefined;
+}
+
+function isAuthFailureStatus(statusCode: number | undefined, errorText: string): boolean {
+	if (statusCode === 401 || statusCode === 403) {
+		return true;
+	}
+
+	return /status\s+code\s+401/i.test(errorText) || /status\s+code\s+403/i.test(errorText);
+}
+
 function isExpressionLikeValue(value: string): boolean {
 	const trimmed = value.trim();
 	if (!trimmed) {
@@ -1481,6 +1532,14 @@ function getOperationOptionsForResource(resource: string): Options[] {
 			};
 		});
 
+	if (resource === authenticationJwtResource) {
+		resourceOperations.push({
+			name: 'Validate JWT',
+			value: validateJwtOperationId,
+			action: 'Validate JWT',
+		});
+	}
+
 	resourceOperations.sort((a: Options, b: Options) => a.name.localeCompare(b.name));
 	return resourceOperations;
 }
@@ -1533,6 +1592,46 @@ function toIDataObject(value: unknown): IDataObject {
 	}
 
 	return { value };
+}
+
+function toEpochSeconds(value: unknown): number | undefined {
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		return Math.trunc(value);
+	}
+
+	if (typeof value === 'string') {
+		const parsed = Number.parseInt(value.trim(), 10);
+		if (Number.isFinite(parsed)) {
+			return parsed;
+		}
+	}
+
+	return undefined;
+}
+
+function withJwtExpirationValidation(value: unknown): IDataObject {
+	const output = toIDataObject(value);
+	const expSeconds = toEpochSeconds(output.exp);
+	const nowSeconds = Math.trunc(Date.now() / 1000);
+
+	output.jwtValidationCheckedAt = new Date().toISOString();
+
+	if (expSeconds === undefined) {
+		output.jwtIsUnexpired = false;
+		output.jwtValidationReason = 'Missing or invalid exp claim';
+		return output;
+	}
+
+	const expiresInSeconds = expSeconds - nowSeconds;
+	output.jwtIsUnexpired = expiresInSeconds > 0;
+	output.jwtExpiresAt = new Date(expSeconds * 1000).toISOString();
+	output.jwtExpiresInSeconds = expiresInSeconds;
+
+	if (expiresInSeconds <= 0) {
+		output.jwtValidationReason = 'Token exp is in the past';
+	}
+
+	return output;
 }
 
 function parseJsonBodyParameter(value: unknown): unknown {
@@ -1630,6 +1729,25 @@ function formatUserLabel(value: Record<string, unknown>, userId: string): string
 
 function buildOperationParameterFields(): INodeProperties[] {
 	const fields: INodeProperties[] = [];
+
+	fields.push({
+		displayName: 'JSON Web Token (ns_t)',
+		name: validateJwtTokenParamName,
+		type: 'string',
+		default: '',
+		required: true,
+		typeOptions: {
+			password: true,
+		},
+		description:
+			'JWT token value to validate. Used only for this request and sent as Authorization: Bearer &lt;token&gt;.',
+		displayOptions: {
+			show: {
+				resource: [authenticationJwtResource],
+				operation: [validateJwtOperationId],
+			},
+		},
+	});
 
 	for (const op of operations) {
 		const override = operationOverrides[op.id];
@@ -3597,6 +3715,58 @@ export class NetSapiens implements INodeType {
 					continue;
 				}
 
+				if (resource === authenticationJwtResource && operationId === validateJwtOperationId) {
+					const providedJwt = String(
+						this.getNodeParameter(validateJwtTokenParamName, itemIndex, ''),
+					).trim();
+					const normalizedJwt = providedJwt.replace(/^Bearer\s+/i, '').trim();
+
+					if (!normalizedJwt) {
+						throw new NodeOperationError(this.getNode(), 'JSON Web Token (ns_t) is required', {
+							itemIndex,
+						});
+					}
+
+					try {
+						const response = await netSapiensRequestWithoutAuthentication(this, {
+							method: toHttpRequestMethod('GET'),
+							url: `${baseUrl}/jwt`,
+							headers: {
+								Authorization: `Bearer ${normalizedJwt}`,
+							},
+						});
+
+						if (Array.isArray(response)) {
+							for (const entry of response) {
+								returnData.push({ json: withJwtExpirationValidation(entry) });
+							}
+						} else {
+							returnData.push({ json: withJwtExpirationValidation(response) });
+						}
+					} catch (error) {
+						const statusCode = getHttpStatusCode(error);
+						const errorText = getErrorText(error);
+						if (isAuthFailureStatus(statusCode, errorText)) {
+							const now = new Date().toISOString();
+							returnData.push({
+								json: {
+									jwtIsUnexpired: false,
+									jwtValidationCheckedAt: now,
+									jwtValidationReason:
+										statusCode === 403
+											? 'JWT rejected by API (403 Forbidden)'
+											: 'JWT rejected by API (401 Unauthorized)',
+									statusCode,
+								},
+							});
+						} else {
+							throw error;
+						}
+					}
+
+					continue;
+				}
+
 				if (!operationId) {
 					throw new NodeOperationError(this.getNode(), 'Please select an operation', { itemIndex });
 				}
@@ -3885,6 +4055,24 @@ export class NetSapiens implements INodeType {
 				}
 			} catch (error) {
 				const errorText = getErrorText(error);
+				const statusCode = getHttpStatusCode(error);
+
+				if (operationId === validateJwtOperationId && isAuthFailureStatus(statusCode, errorText)) {
+					const now = new Date().toISOString();
+					returnData.push({
+						json: {
+							jwtIsUnexpired: false,
+							jwtValidationCheckedAt: now,
+							jwtValidationReason:
+								statusCode === 403
+									? 'JWT rejected by API (403 Forbidden)'
+									: 'JWT rejected by API (401 Unauthorized)',
+							statusCode,
+						},
+					});
+					continue;
+				}
+
 				const isNoRouteFound =
 					/no\s+route\s+found\s*\[92\]/i.test(errorText) || /no\s+route\s+found/i.test(errorText);
 

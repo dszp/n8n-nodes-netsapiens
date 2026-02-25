@@ -78,3 +78,27 @@ export async function netSapiensRequest(
 
 	return await context.helpers.httpRequestWithAuthentication.call(context, 'netSapiensApi', options);
 }
+
+export async function netSapiensRequestWithoutAuthentication(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	requestOptions: {
+		method: IHttpRequestMethods;
+		url: string;
+		qs?: IDataObject;
+		body?: unknown;
+		headers?: Record<string, string>;
+		returnFullResponse?: boolean;
+	},
+): Promise<unknown> {
+	const options: IHttpRequestOptions = {
+		method: requestOptions.method,
+		url: requestOptions.url,
+		qs: requestOptions.qs,
+		body: requestOptions.body as unknown as IDataObject,
+		headers: requestOptions.headers,
+		returnFullResponse: requestOptions.returnFullResponse,
+		json: true,
+	};
+
+	return await context.helpers.httpRequest.call(context, options);
+}
