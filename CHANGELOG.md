@@ -4,6 +4,29 @@ All notable changes to the n8n-nodes-netsapiens project will be documented in th
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.2] - 2026-02-24
+
+### Added
+
+- Added a custom **Authentication/JWT (JSON Web Token) -> Validate JWT** operation.
+- Added a required **JSON Web Token (ns_t)** input for Validate JWT to validate a supplied JWT via `GET /jwt`.
+- Added per-item JWT expiration output metadata on Validate JWT responses:
+  - `jwtIsUnexpired`
+  - `jwtExpiresAt`
+  - `jwtExpiresInSeconds`
+  - `jwtValidationCheckedAt`
+  - `jwtValidationReason` (when applicable)
+
+### Changed
+
+- Validate JWT now sends the provided JWT value in the request `Authorization` header for that single request and does not rely on credential-auth injection for that call.
+- Validate JWT input now accepts both raw token values and values prefixed with `Bearer `.
+
+### Fixed
+
+- Improved Validate JWT error handling so `401/403` auth failures return structured validation output instead of failing node execution.
+- Improved HTTP status extraction for nested and variant n8n error payload shapes to make auth-failure handling more reliable.
+
 ## [0.2.1] - 2025-12-25
 
 ### Added

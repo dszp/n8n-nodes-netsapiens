@@ -56,13 +56,17 @@ The node then renders fields for the endpoint parameters.
 
 In addition, the node includes a **Raw -> Request** operation that lets you call arbitrary endpoints directly when you need full control.
 
+The node also includes a custom **Authentication/JWT (JSON Web Token) -> Validate JWT** operation. This operation accepts a token input (`JSON Web Token (ns_t)`) and validates it against `GET /jwt` using that provided token for the request.
+
 NetSapiens provides the [API JSON Schema](https://docs.ns-api.com/docs/download-full-api-json-schema-file) as part of their documentation, which this node uses to generate the basic node interface. The node also implements a number of overrides to handle NetSapiens-specific details and add additional functionality and affordances.
 
 Read operations are substantially better tested and usable than write calls, which may require build custom JSON objects for crate and update requests initially.
 
 ## Credentials
 
-Create a new **NetSapiens API** credential. This node is designed for [API Keys](https://docs.ns-api.com/docs/api-keys) (bearer tokens) only, not refresh/access tokens or other authentication methods. Oauth Access Tokens and JWT Tokens are not supported, nor does NetSapiens provide documentation for these in version 2 of the API.
+Create a new **NetSapiens API** credential. This node is designed for [API Keys](https://docs.ns-api.com/docs/api-keys) (bearer tokens) as the default credential auth model.
+
+OAuth Access Token and refresh-token flows are not currently supported in this node. JWT credential-login flows are also not supported as node credentials, though the node now includes a dedicated **Validate JWT** operation that accepts a JWT value as input for one request.
 
 Only NetSapiens API version 2 supports API keys, and this node only connects to API version 2 endpoints (though the API key would be valid for API version 1 as well, for versions of NetSapiens that support API version 2 credentials).
 
