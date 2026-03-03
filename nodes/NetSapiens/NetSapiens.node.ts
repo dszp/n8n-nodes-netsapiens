@@ -170,6 +170,96 @@ const createUserRequiredFields = ['user', 'name-first-name', 'name-last-name', '
 
 const updateUserRequiredFields = ['name-first-name', 'name-last-name', 'email-address', 'user-scope'];
 
+// --- Media templated operation constants (MOH, Greetings, Hold Messages) ---
+
+const mediaTtsOperationIds = new Set([
+	'CreateMohDomainTTS', 'UpdateMohDomainTTS',
+	'CreateMohUserTTS', 'UpdateMohUserTTS',
+	'CreateGreetingTTS', 'UpdateGreetingTTS',
+]);
+
+const mediaUploadOperationIds = new Set([
+	// MOH (Base64 ops renamed to "Upload")
+	'CreateMohDomainBase64', 'UpdateMohDomainBase64',
+	'CreateMohUserBase64', 'UpdateMohUserBase64',
+	// Greetings (Base64 ops renamed to "Upload")
+	'CreateGreetingBase64', 'UpdateGreetingBase64',
+	// Hold Messages (FileUpload ops — no Base64 alternative exists)
+	'CreateMsgDomainFileUpload', 'UpdateMsgDomainFileUpload',
+	'PostDomainsByUsersByMsg', 'UpdateMsgUserFileUpload',
+]);
+
+// Hold Message upload ops only support multipart (no Base64 JSON fallback)
+const mediaMultipartOnlyIds = new Set([
+	'CreateMsgDomainFileUpload', 'UpdateMsgDomainFileUpload',
+	'PostDomainsByUsersByMsg', 'UpdateMsgUserFileUpload',
+]);
+
+const mediaCreateOperationIds = new Set([
+	'CreateMohDomainTTS', 'CreateMohDomainBase64',
+	'CreateMohUserTTS', 'CreateMohUserBase64',
+	'CreateGreetingTTS', 'CreateGreetingBase64',
+	'CreateMsgDomainFileUpload', 'PostDomainsByUsersByMsg',
+]);
+
+const mediaDeleteOperationIds = new Set([
+	'DeleteMohDomain', 'DeleteMohUser',
+	'DeleteGreeting',
+	'DeleteMsgDomain', 'DeleteMsgUser',
+]);
+
+const mediaAllTemplatedIds = new Set([...mediaTtsOperationIds, ...mediaUploadOperationIds]);
+
+// Operations whose `index` path parameter should offer a dynamic dropdown
+const mediaIndexDropdownOperationIds = new Set([
+	// Update + Delete for MOH Domain
+	'UpdateMohDomainTTS', 'UpdateMohDomainBase64', 'DeleteMohDomain',
+	// Update + Delete for MOH User
+	'UpdateMohUserTTS', 'UpdateMohUserBase64', 'DeleteMohUser',
+	// Update + Delete for Greetings
+	'UpdateGreetingTTS', 'UpdateGreetingBase64', 'DeleteGreeting',
+	// Update + Delete for Hold Messages Domain
+	'UpdateMsgDomainFileUpload', 'DeleteMsgDomain',
+	// Update + Delete for Hold Messages User
+	'UpdateMsgUserFileUpload', 'DeleteMsgUser',
+]);
+
+// Maps an operation ID to the Read endpoint path segment for fetching existing media items
+function getMediaReadPathSegment(operationId: string): string {
+	if (operationId.includes('MohDomain') || operationId.includes('MohUser')) return 'moh';
+	if (operationId.includes('Greeting')) return 'greetings';
+	if (operationId.includes('MsgDomain') || operationId.includes('MsgUser')) return 'msg';
+	return '';
+}
+
+// Whether a media operation requires a user path parameter for its Read endpoint
+function mediaReadRequiresUser(operationId: string): boolean {
+	return operationId.includes('MohUser') || operationId.includes('Greeting') ||
+		operationId.includes('MsgUser');
+}
+
+// --- Image templated operation constants ---
+const imageUploadOperationIds = new Set([
+	'CreateImageBase64', 'UpdateImageBase64',
+]);
+
+function isImageTemplatedOperation(operationId: string): boolean {
+	return imageUploadOperationIds.has(operationId);
+}
+
+function isMediaTemplatedOperation(operationId: string): boolean {
+	return mediaAllTemplatedIds.has(operationId);
+}
+
+function getMediaResource(operationId: string): string {
+	if (operationId.includes('MohDomain')) return 'Media/Music on Hold/Domain';
+	if (operationId.includes('MohUser')) return 'Media/Music on Hold/User';
+	if (operationId.includes('Greeting')) return 'Media/Greetings';
+	if (operationId.includes('MsgDomain')) return 'Media/Hold Messages/Domain';
+	if (operationId.includes('MsgUser') || operationId === 'PostDomainsByUsersByMsg') return 'Media/Hold Messages/User';
+	return '';
+}
+
 const userCommonFields: Array<{
 	displayName: string;
 	name: string;
@@ -1069,6 +1159,286 @@ function shouldUseTemplatedUserOperation(resource: string, operationId: string):
 		operationId === templatedUserUpdateId ||
 		operationId === templatedUserDeleteId
 	);
+}
+
+// --- Media field builder (MOH, Greetings, Hold Messages) ---
+
+function buildMediaFields(): INodeProperties[] {
+	const fields: INodeProperties[] = [];
+
+	// Helper to build displayOptions for a media operation
+	const mohShow = (opId: string): DisplayOptionsShow => ({
+		resource: [getMediaResource(opId)],
+		operation: [opId],
+	});
+
+	// Helper for conditional show (adds extra condition on top of resource+operation)
+	const mohShowWith = (opId: string, extra: Record<string, string[]>): DisplayOptionsShow => ({
+		...mohShow(opId),
+		...extra,
+	});
+
+	// --- TTS operations ---
+	for (const opId of mediaTtsOperationIds) {
+		const isCreate = mediaCreateOperationIds.has(opId);
+
+		fields.push({
+			displayName: 'Synchronous',
+			name: operationBodyFieldKey(opId, 'synchronous'),
+			type: 'options',
+			default: 'yes',
+			required: true,
+			displayOptions: { show: mohShow(opId) },
+			description: 'Whether to wait for a 200 response or receive a 202 acknowledgement',
+			options: [
+				{ name: 'Yes', value: 'yes' },
+				{ name: 'No', value: 'no' },
+			],
+		});
+
+		fields.push({
+			displayName: 'Script',
+			name: operationBodyFieldKey(opId, 'script'),
+			type: 'string',
+			default: '',
+			required: true,
+			displayOptions: { show: mohShow(opId) },
+			description: 'Text-to-speech content or description of the audio',
+			typeOptions: { rows: 3 },
+		});
+
+		if (isCreate) {
+			fields.push({
+				displayName: 'Index',
+				name: operationBodyFieldKey(opId, 'index'),
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. 2 (leave empty for auto-assign)',
+				displayOptions: { show: mohShow(opId) },
+				description: 'MOH index position. 0 = intro greeting. Leave empty for auto-assignment.',
+				validateType: 'number',
+			});
+		}
+
+		fields.push({
+			displayName: 'Voice Language',
+			name: operationBodyFieldKey(opId, 'voice_language'),
+			type: 'string',
+			default: 'en-US',
+			displayOptions: { show: mohShow(opId) },
+			description: 'Language code for TTS voice (e.g. en-US, es-MX, fr-CA)',
+		});
+
+		fields.push({
+			displayName: 'Voice ID',
+			name: operationBodyFieldKey(opId, 'voice_id'),
+			type: 'string',
+			default: 'en-US-Wavenet-C',
+			displayOptions: { show: mohShow(opId) },
+			description: 'TTS voice identifier',
+		});
+	}
+
+	// --- Upload operations (consolidated Base64 + FileUpload) ---
+	for (const opId of mediaUploadOperationIds) {
+		const isCreate = mediaCreateOperationIds.has(opId);
+		const fileSourceKey = operationBodyFieldKey(opId, 'fileSource');
+
+		fields.push({
+			displayName: 'Synchronous',
+			name: operationBodyFieldKey(opId, 'synchronous'),
+			type: 'options',
+			default: 'yes',
+			required: true,
+			displayOptions: { show: mohShow(opId) },
+			description: 'Whether to wait for a 200 response or receive a 202 acknowledgement',
+			options: [
+				{ name: 'Yes', value: 'yes' },
+				{ name: 'No', value: 'no' },
+			],
+		});
+
+		fields.push({
+			displayName: 'Script',
+			name: operationBodyFieldKey(opId, 'script'),
+			type: 'string',
+			default: '',
+			required: true,
+			displayOptions: { show: mohShow(opId) },
+			description: 'Description of the audio file',
+		});
+
+		if (isCreate) {
+			fields.push({
+				displayName: 'Index',
+				name: operationBodyFieldKey(opId, 'index'),
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. 2 (leave empty for auto-assign)',
+				displayOptions: { show: mohShow(opId) },
+				description: 'MOH index position. 0 = intro greeting. Leave empty for auto-assignment.',
+				validateType: 'number',
+			});
+		}
+
+		fields.push({
+			displayName: 'Convert',
+			name: operationBodyFieldKey(opId, 'convert'),
+			type: 'options',
+			default: 'yes',
+			displayOptions: { show: mohShow(opId) },
+			description: 'Whether the API should convert the file format for playback compatibility',
+			options: [
+				{ name: 'Yes', value: 'yes' },
+				{ name: 'No', value: 'no' },
+			],
+		});
+
+		fields.push({
+			displayName: 'File Source',
+			name: fileSourceKey,
+			type: 'options',
+			default: 'binaryData',
+			required: true,
+			displayOptions: { show: mohShow(opId) },
+			description: 'How to provide the audio file',
+			options: [
+				{ name: 'Binary Data From Previous Node', value: 'binaryData' },
+				{ name: 'Base64 Text Input', value: 'base64Text' },
+			],
+		});
+
+		fields.push({
+			displayName: 'Binary Property',
+			name: operationBodyFieldKey(opId, 'binaryProperty'),
+			type: 'string',
+			default: 'data',
+			displayOptions: { show: mohShowWith(opId, { [fileSourceKey]: ['binaryData'] }) },
+			description: 'Name of the binary property from a previous node containing the audio file',
+		});
+
+		fields.push({
+			displayName: 'Encoding',
+			name: operationBodyFieldKey(opId, 'encoding'),
+			type: 'string',
+			default: '',
+			displayOptions: { show: mohShow(opId) },
+			description: 'MIME type of the audio file (e.g. audio/wav, audio/mp3). Leave empty to auto-detect from binary data.',
+		});
+
+		fields.push({
+			displayName: 'Base64 File',
+			name: operationBodyFieldKey(opId, 'base64_file'),
+			type: 'string',
+			default: '',
+			displayOptions: { show: mohShowWith(opId, { [fileSourceKey]: ['base64Text'] }) },
+			description: 'Base64-encoded audio file content. Use an n8n expression to reference data from a previous node without pasting large values.',
+			typeOptions: { rows: 3 },
+		});
+	}
+
+	return fields;
+}
+
+// --- Image field builder ---
+
+function buildImageFields(): INodeProperties[] {
+	const fields: INodeProperties[] = [];
+
+	const imgShow = (opId: string): DisplayOptionsShow => ({
+		resource: ['Images'],
+		operation: [opId],
+	});
+
+	const imgShowWith = (opId: string, extra: Record<string, string[]>): DisplayOptionsShow => ({
+		...imgShow(opId),
+		...extra,
+	});
+
+	for (const opId of imageUploadOperationIds) {
+		const fileSourceKey = operationBodyFieldKey(opId, 'fileSource');
+
+		fields.push({
+			displayName: 'File Source',
+			name: fileSourceKey,
+			type: 'options',
+			default: 'binaryData',
+			required: true,
+			displayOptions: { show: imgShow(opId) },
+			description: 'How to provide the image file',
+			options: [
+				{ name: 'Binary Data From Previous Node', value: 'binaryData' },
+				{ name: 'Base64 Text Input', value: 'base64Text' },
+			],
+		});
+
+		fields.push({
+			displayName: 'Binary Property',
+			name: operationBodyFieldKey(opId, 'binaryProperty'),
+			type: 'string',
+			default: 'data',
+			displayOptions: { show: imgShowWith(opId, { [fileSourceKey]: ['binaryData'] }) },
+			description: 'Name of the binary property from a previous node containing the image file',
+		});
+
+		fields.push({
+			displayName: 'Filetype (Encoding)',
+			name: operationBodyFieldKey(opId, 'filetype'),
+			type: 'string',
+			default: '',
+			required: true,
+			displayOptions: { show: imgShow(opId) },
+			description: 'MIME type of the image file (e.g. image/png, image/jpeg). Leave empty to auto-detect from binary data.',
+		});
+
+		fields.push({
+			displayName: 'Base64 File',
+			name: operationBodyFieldKey(opId, 'base64_file'),
+			type: 'string',
+			default: '',
+			displayOptions: { show: imgShowWith(opId, { [fileSourceKey]: ['base64Text'] }) },
+			description: 'Base64-encoded image file content. Use an n8n expression to reference data from a previous node without pasting large values.',
+			typeOptions: { rows: 3 },
+		});
+
+		fields.push({
+			displayName: 'Description',
+			name: operationBodyFieldKey(opId, 'description'),
+			type: 'string',
+			default: '',
+			displayOptions: { show: imgShow(opId) },
+			description: 'A description of the image file to indicate what it is used for',
+		});
+
+		fields.push({
+			displayName: 'Reseller',
+			name: operationBodyFieldKey(opId, 'reseller'),
+			type: 'string',
+			default: '*',
+			displayOptions: { show: imgShow(opId) },
+			description: 'The reseller or territory the image file applies to. Defaults to "*" (all).',
+		});
+
+		fields.push({
+			displayName: 'Domain',
+			name: operationBodyFieldKey(opId, 'domain'),
+			type: 'string',
+			default: '*',
+			displayOptions: { show: imgShow(opId) },
+			description: 'The domain the image file applies to. Defaults to "*" (all).',
+		});
+
+		fields.push({
+			displayName: 'Server',
+			name: operationBodyFieldKey(opId, 'server'),
+			type: 'string',
+			default: '*',
+			displayOptions: { show: imgShow(opId) },
+			description: 'The server the image file applies to. Defaults to "*" (all).',
+		});
+	}
+
+	return fields;
 }
 
 function toRequestMode(value: unknown): RequestMode {
@@ -2397,6 +2767,39 @@ function buildOperationParameterFields(): INodeProperties[] {
 				continue;
 			}
 
+			// Media operations: dynamic dropdown for the index path parameter
+			if (param.in === 'path' && param.name === 'index' && mediaIndexDropdownOperationIds.has(op.id)) {
+				fields.push({
+					displayName: 'Index',
+					name: fieldName,
+					type: 'resourceLocator',
+					default: { mode: 'list', value: '' },
+					required: param.required,
+					displayOptions: fieldDisplayOptions,
+					description: 'Select an existing media item to update/delete, or enter an index manually',
+					modes: [
+						{
+							displayName: 'From List',
+							name: 'list',
+							type: 'list',
+							placeholder: 'Select a media item...',
+							typeOptions: {
+								searchListMethod: 'searchMediaItems',
+								searchable: false,
+								searchFilterRequired: false,
+							},
+						},
+						{
+							displayName: 'Index',
+							name: 'id',
+							type: 'string',
+							placeholder: 'e.g. 2',
+						},
+					],
+				});
+				continue;
+			}
+
 			fields.push({
 				displayName: formatParameterLabel(param.name),
 				name: fieldName,
@@ -2454,6 +2857,12 @@ function buildOperationParameterFields(): INodeProperties[] {
 
 		if (op.hasRequestBody) {
 			if (op.id === templatedUserCreateId || op.id === templatedUserUpdateId) {
+				continue;
+			}
+			if (isMediaTemplatedOperation(op.id)) {
+				continue;
+			}
+			if (isImageTemplatedOperation(op.id)) {
 				continue;
 			}
 			fields.push({
@@ -2658,6 +3067,8 @@ export class NetSapiens implements INodeType {
 			},
 			...buildTemplatedUserFields(),
 			...buildOperationParameterFields(),
+			...buildMediaFields(),
+			...buildImageFields(),
 		],
 	};
 
@@ -3659,6 +4070,134 @@ export class NetSapiens implements INodeType {
 
 				return { results };
 			},
+
+			async searchMediaItems(
+				this: ILoadOptionsFunctions,
+			): Promise<INodeListSearchResult> {
+				let baseUrl = '';
+				try {
+					const credentials = (await this.getCredentials('netSapiensApi')) as {
+						server?: string;
+						baseUrl?: string;
+					};
+					baseUrl = resolveBaseUrl(credentials);
+				} catch {
+					return { results: [] };
+				}
+
+				let operationId: string | undefined;
+				try {
+					operationId = this.getCurrentNodeParameter('operation') as string | undefined;
+				} catch {
+					return { results: [] };
+				}
+				if (!operationId || !mediaIndexDropdownOperationIds.has(operationId)) {
+					return { results: [] };
+				}
+
+				// Resolve domain parameter
+				const domainParamNames = [
+					parameterName(operationId, 'path', 'domain'),
+				];
+				let domainParam: unknown;
+				for (const name of domainParamNames) {
+					try {
+						domainParam = this.getCurrentNodeParameter(name, { rawExpressions: true });
+					} catch {
+						continue;
+					}
+					if (domainParam !== undefined && domainParam !== null && domainParam !== '') {
+						break;
+					}
+				}
+				const domain = extractLocatorValue(domainParam).trim();
+				if (!domain || isExpressionLikeValue(domain)) {
+					return { results: [] };
+				}
+
+				// Resolve user parameter if needed
+				let user = '';
+				if (mediaReadRequiresUser(operationId)) {
+					const userParamNames = [
+						parameterName(operationId, 'path', 'user'),
+					];
+					let userParam: unknown;
+					for (const name of userParamNames) {
+						try {
+							userParam = this.getCurrentNodeParameter(name, { rawExpressions: true });
+						} catch {
+							continue;
+						}
+						if (userParam !== undefined && userParam !== null && userParam !== '') {
+							break;
+						}
+					}
+					user = extractLocatorValue(userParam).trim();
+					if (!user || isExpressionLikeValue(user)) {
+						return { results: [] };
+					}
+				}
+
+				// Build Read endpoint URL
+				const pathSegment = getMediaReadPathSegment(operationId);
+				if (!pathSegment) {
+					return { results: [] };
+				}
+
+				let readUrl: string;
+				if (mediaReadRequiresUser(operationId)) {
+					readUrl = `${baseUrl}/domains/${encodeURIComponent(domain)}/users/${encodeURIComponent(user)}/${pathSegment}`;
+				} else {
+					readUrl = `${baseUrl}/domains/${encodeURIComponent(domain)}/${pathSegment}`;
+				}
+
+				let response: unknown;
+				try {
+					response = await netSapiensRequest(this, {
+						method: toHttpRequestMethod('GET'),
+						url: readUrl,
+					});
+				} catch {
+					return { results: [] };
+				}
+
+				const items = normalizeArrayResponse(response);
+				const results: Array<{ name: string; value: string }> = [];
+
+				for (const item of items) {
+					const value = item as Record<string, unknown>;
+					const ordinalOrder = value['ordinal-order'];
+					if (ordinalOrder === undefined || ordinalOrder === null) {
+						continue;
+					}
+					const index = String(ordinalOrder);
+
+					// Build descriptive label
+					const parts: string[] = [`Index ${index}`];
+					const filename = value['filename'] ?? value['file-name'];
+					if (typeof filename === 'string' && filename) {
+						parts.push(filename);
+					}
+					const script = value['file-script-text'];
+					if (typeof script === 'string' && script) {
+						parts.push(`"${script}"`);
+					}
+					const duration = value['file-duration-seconds'];
+					if (duration !== undefined && duration !== null && duration !== '') {
+						parts.push(`${duration}s`);
+					}
+
+					results.push({
+						name: parts.join(' - '),
+						value: index,
+					});
+				}
+
+				// Sort by index numerically
+				results.sort((a, b) => Number(a.value) - Number(b.value));
+
+				return { results };
+			},
 		},
 	};
 
@@ -3993,6 +4532,453 @@ export class NetSapiens implements INodeType {
 					}
 				}
 
+				// --- Media templated operations (MOH, Greetings, Hold Messages) ---
+				if (isMediaTemplatedOperation(operation.id)) {
+					const method = toHttpRequestMethod(operation.method);
+					const mediaBody: IDataObject = {};
+
+					// Common field: synchronous
+					const synchronous = this.getNodeParameter(
+						operationBodyFieldKey(operation.id, 'synchronous'), itemIndex, 'no',
+					) as string;
+					mediaBody.synchronous = synchronous;
+
+					// Common field: script
+					const script = toOptionalString(
+						this.getNodeParameter(operationBodyFieldKey(operation.id, 'script'), itemIndex, '') as unknown,
+					);
+					if (script) {
+						mediaBody.script = script;
+					}
+
+					// Common field: index (Create operations only)
+					if (mediaCreateOperationIds.has(operation.id)) {
+						const index = toOptionalNumberValue(
+							this.getNodeParameter(operationBodyFieldKey(operation.id, 'index'), itemIndex, '') as unknown,
+						);
+						if (index !== undefined) {
+							mediaBody.index = index;
+						}
+					}
+
+					if (mediaTtsOperationIds.has(operation.id)) {
+						// --- TTS path ---
+						if (!script) {
+							throw new NodeOperationError(this.getNode(), 'Script is required for TTS operations', { itemIndex });
+						}
+
+						const voiceLanguage = toOptionalString(
+							this.getNodeParameter(operationBodyFieldKey(operation.id, 'voice_language'), itemIndex, 'en-US') as unknown,
+						);
+						if (voiceLanguage) {
+							mediaBody.voice_language = voiceLanguage;
+						}
+
+						const voiceId = toOptionalString(
+							this.getNodeParameter(operationBodyFieldKey(operation.id, 'voice_id'), itemIndex, 'en-US-Wavenet-C') as unknown,
+						);
+						if (voiceId) {
+							mediaBody.voice_id = voiceId;
+						}
+
+						const response = await netSapiensRequest(this, {
+							method,
+							url,
+							qs: Object.keys(queryParams).length ? (queryParams as IDataObject) : undefined,
+							body: mediaBody,
+							returnFullResponse: true,
+						});
+
+						const responseBody = isFullHttpResponse(response)
+							? (response as unknown as { body: unknown }).body
+							: response;
+						returnData.push({ json: toIDataObject(responseBody) });
+						continue;
+					}
+
+					if (mediaUploadOperationIds.has(operation.id)) {
+						// --- Upload path ---
+						const convert = toOptionalString(
+							this.getNodeParameter(operationBodyFieldKey(operation.id, 'convert'), itemIndex, 'no') as unknown,
+						);
+						if (convert) {
+							mediaBody.convert = convert;
+						}
+
+						const fileSource = this.getNodeParameter(
+							operationBodyFieldKey(operation.id, 'fileSource'), itemIndex, 'binaryData',
+						) as string;
+
+						const encodingParam = toOptionalString(
+							this.getNodeParameter(operationBodyFieldKey(operation.id, 'encoding'), itemIndex, '') as unknown,
+						);
+
+						if (fileSource === 'binaryData') {
+							// Binary Data path → multipart/form-data upload (avoids JSON body size limits)
+							const binaryProperty = this.getNodeParameter(
+								operationBodyFieldKey(operation.id, 'binaryProperty'), itemIndex, 'data',
+							) as string;
+
+							const items = this.getInputData();
+							const item = items[itemIndex];
+							if (!item.binary || !item.binary[binaryProperty]) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`No binary data found in property "${binaryProperty}". Make sure the previous node outputs binary data.`,
+									{ itemIndex },
+								);
+							}
+
+							const binaryData = item.binary[binaryProperty];
+							const binaryBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryProperty);
+
+							// Auto-detect encoding from binary metadata if user left it empty
+							const fileContentType = encodingParam || binaryData.mimeType || 'application/octet-stream';
+							const fileName = binaryData.fileName || 'upload.wav';
+
+							// Build multipart/form-data body manually (no external dependencies)
+							const boundary = `----n8nMohBoundary${Date.now()}`;
+							const parts: Buffer[] = [];
+
+							const addTextField = (name: string, value: string) => {
+								parts.push(Buffer.from(
+									`--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`,
+								));
+							};
+
+							// File field
+							parts.push(Buffer.from(
+								`--${boundary}\r\nContent-Disposition: form-data; name="File"; filename="${fileName}"\r\nContent-Type: ${fileContentType}\r\n\r\n`,
+							));
+							parts.push(binaryBuffer);
+							parts.push(Buffer.from('\r\n'));
+
+							// Text fields
+							addTextField('synchronous', synchronous);
+							if (script) {
+								addTextField('script', script);
+							}
+							if (convert) {
+								addTextField('convert', convert);
+							}
+							if (mediaCreateOperationIds.has(operation.id)) {
+								const index = toOptionalNumberValue(
+									this.getNodeParameter(operationBodyFieldKey(operation.id, 'index'), itemIndex, '') as unknown,
+								);
+								if (index !== undefined) {
+									addTextField('index', String(index));
+								}
+							}
+
+							// Closing boundary
+							parts.push(Buffer.from(`--${boundary}--\r\n`));
+
+							const multipartBody = Buffer.concat(parts);
+
+							// NetSapiens API only accepts multipart/form-data via POST, even for updates
+							const multipartMethod = 'POST' as const;
+
+							const response = await this.helpers.httpRequestWithAuthentication.call(
+								this,
+								'netSapiensApi',
+								{
+									method: multipartMethod,
+									url,
+									qs: Object.keys(queryParams).length ? (queryParams as IDataObject) : undefined,
+									body: multipartBody,
+									headers: {
+										'Content-Type': `multipart/form-data; boundary=${boundary}`,
+									},
+									json: false,
+									returnFullResponse: true,
+								},
+							);
+
+							const statusCode = isFullHttpResponse(response)
+								? (response as unknown as { statusCode: number }).statusCode
+								: undefined;
+							let responseBody = isFullHttpResponse(response)
+								? (response as unknown as { body: unknown }).body
+								: response;
+
+							// Parse JSON response if returned as string (json: false)
+							if (typeof responseBody === 'string') {
+								try {
+									responseBody = JSON.parse(responseBody);
+								} catch {
+									// Keep as string if not valid JSON
+								}
+							}
+
+							if (statusCode === 200 || statusCode === 202) {
+								returnData.push({ json: toIDataObject(responseBody) });
+							} else {
+								returnData.push({ json: { statusCode, response: toIDataObject(responseBody) } });
+							}
+							continue;
+						}
+
+						// Base64 Text path
+						const base64File = toOptionalString(
+							this.getNodeParameter(operationBodyFieldKey(operation.id, 'base64_file'), itemIndex, '') as unknown,
+						);
+
+						if (mediaMultipartOnlyIds.has(operation.id)) {
+							// Multipart-only ops (Hold Messages): convert base64 text to binary, send multipart
+							if (!base64File) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Base64 file data is required for this operation',
+									{ itemIndex },
+								);
+							}
+							const fileContentType = encodingParam || 'application/octet-stream';
+							const fileBuffer = Buffer.from(base64File, 'base64');
+
+							const boundary = `----n8nMediaBoundary${Date.now()}`;
+							const parts: Buffer[] = [];
+
+							const addField = (name: string, value: string) => {
+								parts.push(Buffer.from(
+									`--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`,
+								));
+							};
+
+							parts.push(Buffer.from(
+								`--${boundary}\r\nContent-Disposition: form-data; name="File"; filename="upload.wav"\r\nContent-Type: ${fileContentType}\r\n\r\n`,
+							));
+							parts.push(fileBuffer);
+							parts.push(Buffer.from('\r\n'));
+
+							addField('synchronous', synchronous);
+							if (script) {
+								addField('script', script);
+							}
+							if (convert) {
+								addField('convert', convert);
+							}
+							if (mediaCreateOperationIds.has(operation.id)) {
+								const index = toOptionalNumberValue(
+									this.getNodeParameter(operationBodyFieldKey(operation.id, 'index'), itemIndex, '') as unknown,
+								);
+								if (index !== undefined) {
+									addField('index', String(index));
+								}
+							}
+
+							parts.push(Buffer.from(`--${boundary}--\r\n`));
+
+							const multipartBody = Buffer.concat(parts);
+
+							// NetSapiens API only accepts multipart/form-data via POST, even for updates
+							const multipartMethod = 'POST' as const;
+
+							const response = await this.helpers.httpRequestWithAuthentication.call(
+								this,
+								'netSapiensApi',
+								{
+									method: multipartMethod,
+									url,
+									qs: Object.keys(queryParams).length ? (queryParams as IDataObject) : undefined,
+									body: multipartBody,
+									headers: {
+										'Content-Type': `multipart/form-data; boundary=${boundary}`,
+									},
+									json: false,
+									returnFullResponse: true,
+								},
+							);
+
+							let responseBody = isFullHttpResponse(response)
+								? (response as unknown as { body: unknown }).body
+								: response;
+							if (typeof responseBody === 'string') {
+								try {
+									responseBody = JSON.parse(responseBody);
+								} catch {
+									// Keep as string
+								}
+							}
+							returnData.push({ json: toIDataObject(responseBody) });
+							continue;
+						}
+
+						// JSON path (MOH, Greetings): send base64 data via JSON endpoint
+						if (base64File) {
+							mediaBody.base64_file = base64File;
+						}
+						if (encodingParam) {
+							mediaBody.encoding = encodingParam;
+						}
+
+						const response = await netSapiensRequest(this, {
+							method,
+							url,
+							qs: Object.keys(queryParams).length ? (queryParams as IDataObject) : undefined,
+							body: mediaBody,
+							returnFullResponse: true,
+						});
+
+						const responseBody = isFullHttpResponse(response)
+							? (response as unknown as { body: unknown }).body
+							: response;
+						returnData.push({ json: toIDataObject(responseBody) });
+						continue;
+					}
+				}
+
+				// --- Image templated operations ---
+				if (isImageTemplatedOperation(operation.id)) {
+					const method = toHttpRequestMethod(operation.method);
+					const imageBody: IDataObject = {};
+
+					const fileSource = this.getNodeParameter(
+						operationBodyFieldKey(operation.id, 'fileSource'), itemIndex, 'binaryData',
+					) as string;
+
+					const filetypeParam = toOptionalString(
+						this.getNodeParameter(operationBodyFieldKey(operation.id, 'filetype'), itemIndex, '') as unknown,
+					);
+					const descriptionParam = toOptionalString(
+						this.getNodeParameter(operationBodyFieldKey(operation.id, 'description'), itemIndex, '') as unknown,
+					);
+					const resellerParam = toOptionalString(
+						this.getNodeParameter(operationBodyFieldKey(operation.id, 'reseller'), itemIndex, '*') as unknown,
+					);
+					const domainParam = toOptionalString(
+						this.getNodeParameter(operationBodyFieldKey(operation.id, 'domain'), itemIndex, '*') as unknown,
+					);
+					const serverParam = toOptionalString(
+						this.getNodeParameter(operationBodyFieldKey(operation.id, 'server'), itemIndex, '*') as unknown,
+					);
+
+					if (fileSource === 'binaryData') {
+						// Binary Data path → multipart/form-data upload
+						const binaryProperty = this.getNodeParameter(
+							operationBodyFieldKey(operation.id, 'binaryProperty'), itemIndex, 'data',
+						) as string;
+
+						const inputItems = this.getInputData();
+						const item = inputItems[itemIndex];
+						if (!item.binary || !item.binary[binaryProperty]) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`No binary data found in property "${binaryProperty}". Make sure the previous node outputs binary data.`,
+								{ itemIndex },
+							);
+						}
+
+						const binaryData = item.binary[binaryProperty];
+						const binaryBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryProperty);
+						const fileContentType = filetypeParam || binaryData.mimeType || 'application/octet-stream';
+						const fileName = binaryData.fileName || 'upload.png';
+
+						const boundary = `----n8nImageBoundary${Date.now()}`;
+						const parts: Buffer[] = [];
+
+						const addTextField = (name: string, value: string) => {
+							parts.push(Buffer.from(
+								`--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`,
+							));
+						};
+
+						// File field
+						parts.push(Buffer.from(
+							`--${boundary}\r\nContent-Disposition: form-data; name="File"; filename="${fileName}"\r\nContent-Type: ${fileContentType}\r\n\r\n`,
+						));
+						parts.push(binaryBuffer);
+						parts.push(Buffer.from('\r\n'));
+
+						// Optional fields
+						if (resellerParam) addTextField('reseller', resellerParam);
+						if (domainParam) addTextField('domain', domainParam);
+						if (serverParam) addTextField('server', serverParam);
+						if (descriptionParam) addTextField('description', descriptionParam);
+
+						parts.push(Buffer.from(`--${boundary}--\r\n`));
+
+						const multipartBody = Buffer.concat(parts);
+
+						// NetSapiens API only accepts multipart/form-data via POST
+						const multipartMethod = 'POST' as const;
+
+						const response = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'netSapiensApi',
+							{
+								method: multipartMethod,
+								url,
+								qs: Object.keys(queryParams).length ? (queryParams as IDataObject) : undefined,
+								body: multipartBody,
+								headers: {
+									'Content-Type': `multipart/form-data; boundary=${boundary}`,
+								},
+								json: false,
+								returnFullResponse: true,
+							},
+						);
+
+						const statusCode = isFullHttpResponse(response)
+							? (response as unknown as { statusCode: number }).statusCode
+							: undefined;
+						let responseBody = isFullHttpResponse(response)
+							? (response as unknown as { body: unknown }).body
+							: response;
+
+						if (typeof responseBody === 'string') {
+							try {
+								responseBody = JSON.parse(responseBody);
+							} catch {
+								// Keep as string
+							}
+						}
+
+						if (statusCode === 200 || statusCode === 202) {
+							returnData.push({ json: toIDataObject(responseBody) });
+						} else {
+							returnData.push({ json: { statusCode, response: toIDataObject(responseBody) } });
+						}
+						continue;
+					}
+
+					// Base64 Text path → JSON body
+					const base64File = toOptionalString(
+						this.getNodeParameter(operationBodyFieldKey(operation.id, 'base64_file'), itemIndex, '') as unknown,
+					);
+					if (base64File) {
+						imageBody.base64_file = base64File;
+					}
+					if (filetypeParam) {
+						imageBody.filetype = filetypeParam;
+					}
+					if (descriptionParam) {
+						imageBody.description = descriptionParam;
+					}
+					if (resellerParam) {
+						imageBody.reseller = resellerParam;
+					}
+					if (domainParam) {
+						imageBody.domain = domainParam;
+					}
+					if (serverParam) {
+						imageBody.server = serverParam;
+					}
+
+					const response = await netSapiensRequest(this, {
+						method,
+						url,
+						qs: Object.keys(queryParams).length ? (queryParams as IDataObject) : undefined,
+						body: imageBody,
+						returnFullResponse: true,
+					});
+
+					const responseBody = isFullHttpResponse(response)
+						? (response as unknown as { body: unknown }).body
+						: response;
+					returnData.push({ json: toIDataObject(responseBody) });
+					continue;
+				}
+
 				const body = operation.hasRequestBody
 					? parseJsonBodyParameter(
 							this.getNodeParameter(`${operation.id}__body`, itemIndex, '{}') as unknown,
@@ -4067,6 +5053,23 @@ export class NetSapiens implements INodeType {
 								statusCode === 403
 									? 'JWT rejected by API (403 Forbidden)'
 									: 'JWT rejected by API (401 Unauthorized)',
+							statusCode,
+						},
+					});
+					continue;
+				}
+
+				// Media Delete returns 404 "not found index for removal" on success
+				if (
+					mediaDeleteOperationIds.has(operationId) &&
+					statusCode === 404 &&
+					/not found index for removal/i.test(errorText)
+				) {
+					returnData.push({
+						json: {
+							success: true,
+							message: 'Item deleted successfully',
+							operationId,
 							statusCode,
 						},
 					});

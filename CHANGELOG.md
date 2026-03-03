@@ -4,6 +4,31 @@ All notable changes to the n8n-nodes-netsapiens project will be documented in th
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.3] - 2026-03-02
+
+### Added
+
+- Added dedicated UI fields for all **Music on Hold** (Domain and User), **Greetings**, and **Hold Messages** (Domain and User) Create and Update operations, replacing the generic JSON Body input.
+- Added consolidated "Upload" operations that support both **Binary Data from Previous Node** (multipart/form-data) and **Base64 Text Input** file sources via a File Source selector across all media resources.
+- Added auto-detection of audio file encoding (MIME type) from binary metadata when the Encoding field is left empty.
+- Added proper TTS operation fields (MOH and Greetings): Script, Voice Language, Voice ID, Index, and Synchronous.
+- Added proper Upload operation fields: Script, Index, Convert, File Source, Binary Property, Encoding, Base64 File, and Synchronous.
+- Added graceful handling of Media Delete operations (MOH, Greetings, Hold Messages) where the API returns 404 "not found index for removal" on successful deletion — now returns a success response instead of throwing an error.
+- Added dynamic **Index** dropdown for all media Update and Delete operations that fetches existing items via the Read endpoint, showing ordinal-order, filename, script text, and duration. Manual index entry is also available.
+- Added dedicated UI fields for **Images** Create and Update operations with File Source selector (Binary Data / Base64 Text), Filetype, Description, Reseller, Domain, and Server fields.
+- Consolidated Images `FileUpload` and `Base64` Update operations into a single "Upload" operation.
+
+### Changed
+
+- Consolidated separate Base64 and FileUpload operations into single "Upload" operations for MOH (Domain and User) and Greetings, providing a cleaner UI.
+- Renamed Hold Messages FileUpload operations to "Upload" display names (no Base64 alternative exists for Hold Messages).
+- Hidden redundant individual FileUpload operations for MOH, Greetings, and Images via operation overrides.
+- Binary file uploads use manual multipart/form-data encoding via Node.js `Buffer` (no external dependencies), avoiding server-side JSON body size limits that prevented large file uploads via base64-encoded JSON.
+- Hold Messages base64 text input is automatically converted to binary and sent via multipart (since the API only supports multipart for these resources).
+- All multipart file uploads use POST regardless of the operation's nominal HTTP method, since the NetSapiens API rejects PUT with multipart/form-data ("Missing action" error).
+- Changed default for **Synchronous** to "Yes" across all media TTS and Upload operations.
+- Changed default for **Convert** to "Yes" for all media Upload operations.
+
 ## [0.2.2] - 2026-02-24
 
 ### Added
