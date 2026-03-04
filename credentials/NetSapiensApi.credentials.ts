@@ -16,7 +16,7 @@ export class NetSapiensApi implements ICredentialType {
 		dark: 'file:../nodes/NetSapiens/NetSapiens.dark.svg',
 	};
 
-	documentationUrl = 'https://github.com/<...>/n8n-nodes-<...>?tab=readme-ov-file#credentials';
+	documentationUrl = 'https://github.com/dszp/n8n-nodes-netsapiens?tab=readme-ov-file#credentials';
 
 	properties: INodeProperties[] = [
 		{
