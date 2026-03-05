@@ -12,6 +12,8 @@ NetSapiens is a Voice over IP (VoIP) phone switch software provider that provide
 		- [Self-Hosted n8n](#self-hosted-n8n)
 	- [Operations](#operations)
 	- [Credentials](#credentials)
+		- [API Key (Bearer Token) — default](#api-key-bearer-token--default)
+		- [OAuth2 (Password Grant)](#oauth2-password-grant)
 	- [Compatibility](#compatibility)
 	- [Usage](#usage)
 		- [Basic usage](#basic-usage)
@@ -99,6 +101,8 @@ JWT credential-login flows are not supported as node credentials, though the nod
 NetSapiens, as of this writing, runs a [Developer Sandbox](https://docs.ns-api.com/docs/developer-sandbox-ns-apicom) where you can test API usage if you would like.
 
 NetSapiens provides an [API v1 Migration to v2 reference](https://docs.ns-api.com/docs/v1-migration-to-v2) to review so you can determine differences between the API versions if you're familiar with version 1.
+
+NetSapiens also provides an [MCP server](https://docs.ns-api.com/v45.0/docs/mcp-1) that you can add to your favorite AI tool (it's unauthenticated and open, only requiring a URL) that lets AI gather API documentation in real-time to build queries and workflows.
 
 ## Compatibility
 
