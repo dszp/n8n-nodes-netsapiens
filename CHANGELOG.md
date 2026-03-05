@@ -4,6 +4,28 @@ All notable changes to the n8n-nodes-netsapiens project will be documented in th
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.4] - 2026-03-04
+
+### Added
+
+- Added **OAuth2 (Password Grant)** authentication support alongside the existing API Key auth, both within a single **NetSapiens API** credential via an **Authentication Method** selector.
+- Added automatic token caching and refresh for OAuth2, with 60-second expiry buffer and automatic retry on 401.
+- Added v2 token endpoint with automatic fallback to legacy `/ns-api/oauth2/token/` endpoint on 404.
+- Added **Validate User Credentials** operation (`Authentication/User Credentials -> Validate`) that validates a username/password against the OAuth2 token endpoint, returning structured success or failure results.
+- Added domain and user dropdown fallback for restricted OAuth2 users — automatically falls back to `/domains/~` and `/domains/~/users/~` when the user lacks permission to list all domains or users.
+- Added `continueOnFail()` support for graceful per-item error handling.
+- Added `pairedItem` tracking on all output items for proper n8n data flow tracing.
+
+### Changed
+
+- Consolidated authentication into a single credential type with an auth type toggle inside the credential dialog, avoiding the performance-degrading pattern of multiple credential types with `displayOptions` on nodes with large property counts.
+- Credential-aware cache keys for domain/user/site dropdowns — switching between credentials or auth types now correctly refreshes cached data.
+- Improved OAuth2 error messages with actionable guidance (e.g., 401 suggests checking credentials, 403 suggests checking user scope/role).
+
+### Fixed
+
+- Fixed credential test validation for OAuth2 — test request now self-sufficiently POSTs to the tokens endpoint instead of depending on `preAuthentication`, which may not run reliably in dev mode.
+
 ## [0.2.3] - 2026-03-02
 
 ### Added

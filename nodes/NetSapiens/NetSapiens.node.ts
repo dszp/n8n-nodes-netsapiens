@@ -1,6 +1,8 @@
 import type {
 	IExecuteFunctions,
 	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
 	INodeExecutionData,
@@ -14,12 +16,104 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { operationMap, operations, resources } from '../../generated/openapi';
 import { operationOverrides, resourceOverrides } from '../../overrides/operations.overrides';
 import {
+	getOAuth2Token,
 	netSapiensRequest,
+	netSapiensOAuth2Request,
 	netSapiensRequestWithoutAuthentication,
 	replacePathParams,
 	resolveBaseUrl,
 	toHttpRequestMethod,
+	validateUserCredentials,
 } from '../../transport/request';
+import type { NetSapiensCredentials, NetSapiensOAuth2Credentials } from '../../transport/request';
+
+type AuthInfo = {
+	authType: 'apiKey' | 'oAuth2';
+	baseUrl: string;
+	oauth2Credentials?: NetSapiensOAuth2Credentials;
+};
+
+/**
+ * Resolve credentials and base URL for either auth type.
+ * Works in both IExecuteFunctions and ILoadOptionsFunctions contexts.
+ */
+async function resolveAuth(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+): Promise<AuthInfo> {
+	// Single credential with authType toggle — no credential displayOptions on the node,
+	// which avoids the n8n frontend performance penalty with large property counts.
+	const creds = await context.getCredentials('netSapiensApi');
+	const authType = creds.authType as string;
+
+	if (authType === 'oAuth2') {
+		const baseUrl = resolveBaseUrl({ server: creds.server as string });
+		return {
+			authType: 'oAuth2',
+			baseUrl,
+			oauth2Credentials: {
+				server: creds.server as string,
+				clientId: creds.clientId as string,
+				clientSecret: creds.clientSecret as string,
+				username: creds.username as string,
+				password: creds.password as string,
+			},
+		};
+	}
+
+	const apiKeyCreds: NetSapiensCredentials = {
+		server: creds.server as string | undefined,
+		baseUrl: creds.baseUrl as string | undefined,
+	};
+	return {
+		authType: 'apiKey',
+		baseUrl: resolveBaseUrl(apiKeyCreds),
+	};
+}
+
+/**
+ * Make an authenticated request using the appropriate auth method.
+ */
+async function authenticatedRequest(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	auth: AuthInfo,
+	requestOptions: {
+		method: IHttpRequestMethods;
+		url: string;
+		qs?: IDataObject;
+		body?: unknown;
+		headers?: Record<string, string>;
+		returnFullResponse?: boolean;
+	},
+): Promise<unknown> {
+	if (auth.authType === 'oAuth2' && auth.oauth2Credentials) {
+		return netSapiensOAuth2Request(context, auth.oauth2Credentials, requestOptions);
+	}
+	return netSapiensRequest(context, requestOptions);
+}
+
+/**
+ * Make an authenticated multipart request using the appropriate auth method.
+ * For OAuth2, manually adds the bearer token. For API key, uses httpRequestWithAuthentication.
+ */
+async function authenticatedMultipartRequest(
+	context: IExecuteFunctions,
+	auth: AuthInfo,
+	options: IHttpRequestOptions,
+): Promise<unknown> {
+	if (auth.authType === 'oAuth2' && auth.oauth2Credentials) {
+		const token = await getOAuth2Token(context, auth.oauth2Credentials);
+		options.headers = {
+			...options.headers,
+			Authorization: `Bearer ${token}`,
+		};
+		return await context.helpers.httpRequest.call(context, options);
+	}
+	return await context.helpers.httpRequestWithAuthentication.call(
+		context,
+		'netSapiensApi',
+		options,
+	);
+}
 
 type RequestMode = 'sync' | 'asyncAck' | 'asyncEcho';
 
@@ -50,6 +144,18 @@ const apiVersionCacheByBaseUrl = new Map<string, ApiVersionCacheEntry>();
 
 const loadOptionsTtlMs = 15 * 60 * 1000;
 
+/**
+ * Build a cache key prefix that includes credential identity.
+ * Different auth types and different OAuth2 users on the same server
+ * must not share cached dropdown data.
+ */
+function authCacheKey(auth: AuthInfo): string {
+	if (auth.authType === 'oAuth2' && auth.oauth2Credentials) {
+		return `oAuth2:${auth.oauth2Credentials.username}@${auth.baseUrl}`;
+	}
+	return `apiKey@${auth.baseUrl}`;
+}
+
 function parseApiVersionMajor(version: unknown): number | undefined {
 	if (typeof version === 'number' && Number.isFinite(version)) {
 		return Math.trunc(version);
@@ -68,6 +174,7 @@ function parseApiVersionMajor(version: unknown): number | undefined {
 
 async function getServerApiVersion(
 	context: IExecuteFunctions,
+	auth: AuthInfo,
 	baseUrl: string,
 	options?: { refresh?: boolean },
 ): Promise<ApiVersionCacheEntry> {
@@ -80,7 +187,7 @@ async function getServerApiVersion(
 
 	try {
 		const url = `${baseUrl}/version`;
-		const response = await netSapiensRequest(context, {
+		const response = await authenticatedRequest(context, auth, {
 			method: toHttpRequestMethod('GET'),
 			url,
 		});
@@ -163,6 +270,13 @@ const templatedUserDeleteId = 'DeleteUser';
 const validateJwtOperationId = 'ValidateJwt';
 const authenticationJwtResource = 'Authentication/JWT (JSON Web Token)';
 const validateJwtTokenParamName = `${validateJwtOperationId}__token`;
+
+const validateUserCredsOperationId = 'ValidateUserCredentials';
+const authenticationUserCredsResource = 'Authentication/User Credentials';
+const validateUserCredsUsernameParam = `${validateUserCredsOperationId}__username`;
+const validateUserCredsPasswordParam = `${validateUserCredsOperationId}__password`;
+const validateUserCredsClientIdParam = `${validateUserCredsOperationId}__clientId`;
+const validateUserCredsClientSecretParam = `${validateUserCredsOperationId}__clientSecret`;
 
 const templatedUserResource = 'Users';
 
@@ -1593,6 +1707,71 @@ function isAuthFailureStatus(statusCode: number | undefined, errorText: string):
 	return /status\s+code\s+401/i.test(errorText) || /status\s+code\s+403/i.test(errorText);
 }
 
+/**
+ * Fallback for restricted users who can't list all domains.
+ * Fetches the user's own domain via GET /domains/~ and returns it as a single-item dropdown list.
+ */
+async function fetchMyDomainFallback(
+	context: ILoadOptionsFunctions,
+	auth: AuthInfo,
+	baseUrl: string,
+): Promise<INodePropertyOptions[]> {
+	try {
+		const response = await authenticatedRequest(context, auth, {
+			method: toHttpRequestMethod('GET'),
+			url: `${baseUrl}/domains/~`,
+		});
+		const items = normalizeArrayResponse(
+			response && typeof response === 'object' && !Array.isArray(response) ? [response] : response,
+		);
+		const options: INodePropertyOptions[] = [];
+		for (const item of items) {
+			const value = item as Record<string, unknown>;
+			const domain = typeof value.domain === 'string' ? value.domain.trim() : '';
+			if (domain) {
+				options.push({ name: formatDomainLabel(value, domain), value: domain });
+			}
+		}
+		return options;
+	} catch {
+		return [];
+	}
+}
+
+/**
+ * Fallback for restricted users who can't list all users in a domain.
+ * Fetches the user's own info via GET /domains/~/users/~ and returns it as a single-item dropdown list.
+ */
+async function fetchMyUserFallback(
+	context: ILoadOptionsFunctions,
+	auth: AuthInfo,
+	baseUrl: string,
+): Promise<INodePropertyOptions[]> {
+	try {
+		const response = await authenticatedRequest(context, auth, {
+			method: toHttpRequestMethod('GET'),
+			url: `${baseUrl}/domains/~/users/~`,
+		});
+		const items = normalizeArrayResponse(
+			response && typeof response === 'object' && !Array.isArray(response) ? [response] : response,
+		);
+		const options: INodePropertyOptions[] = [];
+		for (const item of items) {
+			const value = item as Record<string, unknown>;
+			const rawUser =
+				value.user ?? value.id ?? value.uid ?? value.userId ?? value.userID ?? value.user_id ?? value.userid;
+			const userId =
+				typeof rawUser === 'string' || typeof rawUser === 'number' ? String(rawUser).trim() : '';
+			if (userId) {
+				options.push({ name: formatUserLabel(value, userId), value: userId });
+			}
+		}
+		return options;
+	} catch {
+		return [];
+	}
+}
+
 function isExpressionLikeValue(value: string): boolean {
 	const trimmed = value.trim();
 	if (!trimmed) {
@@ -1692,6 +1871,7 @@ function toOptionalNumber(value: unknown): number | undefined {
 
 async function requestAllPages(
 	context: IExecuteFunctions,
+	auth: AuthInfo,
 	request: {
 		url: string;
 		qs?: IDataObject;
@@ -1705,7 +1885,7 @@ async function requestAllPages(
 
 	while (loops < 1000) {
 		loops++;
-		const response = await netSapiensRequest(context, {
+		const response = await authenticatedRequest(context, auth, {
 			method: toHttpRequestMethod('GET'),
 			url: request.url,
 			qs: {
@@ -1881,6 +2061,14 @@ function getResourceOptions(): Options[] {
 		});
 	}
 
+	// Add custom resource for User Credentials validation if not already present
+	if (!options.some((o) => o.value === authenticationUserCredsResource)) {
+		options.push({
+			name: normalizeResourceName(authenticationUserCredsResource),
+			value: authenticationUserCredsResource,
+		});
+	}
+
 	return options;
 }
 
@@ -1907,6 +2095,14 @@ function getOperationOptionsForResource(resource: string): Options[] {
 			name: 'Validate JWT',
 			value: validateJwtOperationId,
 			action: 'Validate JWT',
+		});
+	}
+
+	if (resource === authenticationUserCredsResource) {
+		resourceOperations.push({
+			name: 'Validate',
+			value: validateUserCredsOperationId,
+			action: 'Validate user credentials',
 		});
 	}
 
@@ -2115,6 +2311,72 @@ function buildOperationParameterFields(): INodeProperties[] {
 			show: {
 				resource: [authenticationJwtResource],
 				operation: [validateJwtOperationId],
+			},
+		},
+	});
+
+	// Validate User Credentials operation fields
+	fields.push({
+		displayName: 'Username',
+		name: validateUserCredsUsernameParam,
+		type: 'string',
+		default: '',
+		required: true,
+		description: 'The NetSapiens username to validate',
+		placeholder: 'e.g. user@domain.example.com',
+		displayOptions: {
+			show: {
+				resource: [authenticationUserCredsResource],
+				operation: [validateUserCredsOperationId],
+			},
+		},
+	});
+	fields.push({
+		displayName: 'Password',
+		name: validateUserCredsPasswordParam,
+		type: 'string',
+		default: '',
+		required: true,
+		typeOptions: {
+			password: true,
+		},
+		description: 'The password for the user to validate',
+		displayOptions: {
+			show: {
+				resource: [authenticationUserCredsResource],
+				operation: [validateUserCredsOperationId],
+			},
+		},
+	});
+	fields.push({
+		displayName: 'Client ID',
+		name: validateUserCredsClientIdParam,
+		type: 'string',
+		default: '',
+		description:
+			'OAuth2 client ID to use for validation. If an OAuth2 credential is configured, this is optional and will be read from the credential.',
+		placeholder: 'e.g. appname.territory',
+		displayOptions: {
+			show: {
+				resource: [authenticationUserCredsResource],
+				operation: [validateUserCredsOperationId],
+			},
+		},
+	});
+	fields.push({
+		displayName: 'Client Secret',
+		name: validateUserCredsClientSecretParam,
+		type: 'string',
+		default: '',
+		typeOptions: {
+			password: true,
+		},
+		description:
+			'OAuth2 client secret to use for validation. If an OAuth2 credential is configured, this is optional and will be read from the credential.',
+		displayOptions: {
+			show: {
+				resource: [authenticationUserCredsResource],
+				operation: [validateUserCredsOperationId],
 			},
 		},
 	});
@@ -3075,21 +3337,18 @@ export class NetSapiens implements INodeType {
 	methods = {
 		loadOptions: {
 			async getResellers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const credentials = (await this.getCredentials('netSapiensApi')) as {
-					server?: string;
-					baseUrl?: string;
-				};
-				const baseUrl = resolveBaseUrl(credentials);
+				const auth = await resolveAuth(this);
+				const baseUrl = auth.baseUrl;
 				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
 
 				const now = Date.now();
-				const cached = resellersCacheByBaseUrl.get(baseUrl);
+				const cached = resellersCacheByBaseUrl.get(authCacheKey(auth));
 				if (!shouldRefresh && cached && cached.options.length && now - cached.fetchedAtMs < loadOptionsTtlMs) {
 					return cached.options;
 				}
 
 				const url = `${baseUrl}/resellers`;
-				const response = await netSapiensRequest(this, {
+				const response = await authenticatedRequest(this, auth, {
 					method: toHttpRequestMethod('GET'),
 					url,
 				});
@@ -3116,25 +3375,22 @@ export class NetSapiens implements INodeType {
 
 				options.sort((a, b) => a.name.localeCompare(b.name));
 
-				resellersCacheByBaseUrl.set(baseUrl, { fetchedAtMs: now, options });
+				resellersCacheByBaseUrl.set(authCacheKey(auth), { fetchedAtMs: now, options });
 				return options;
 			},
 
 			async getDomains(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				let baseUrl = '';
+				let auth: AuthInfo;
 				try {
-					const credentials = (await this.getCredentials('netSapiensApi')) as {
-						server?: string;
-						baseUrl?: string;
-					};
-					baseUrl = resolveBaseUrl(credentials);
+					auth = await resolveAuth(this);
 				} catch {
 					return [];
 				}
+				const baseUrl = auth.baseUrl;
 				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
 
 				const now = Date.now();
-				const cached = domainsCacheByBaseUrl.get(baseUrl);
+				const cached = domainsCacheByBaseUrl.get(authCacheKey(auth));
 				if (!shouldRefresh && cached && cached.options.length && now - cached.fetchedAtMs < loadOptionsTtlMs) {
 					return cached.options;
 				}
@@ -3142,7 +3398,7 @@ export class NetSapiens implements INodeType {
 				let items: unknown[];
 				try {
 					const url = `${baseUrl}/domains`;
-					const page = await netSapiensRequest(this, {
+					const page = await authenticatedRequest(this, auth, {
 						method: toHttpRequestMethod('GET'),
 						url,
 						qs: { start: 0, limit: 100 },
@@ -3152,7 +3408,7 @@ export class NetSapiens implements INodeType {
 					if (items.length === 100) {
 						let start = 100;
 						while (start < 100000) {
-							const nextPage = await netSapiensRequest(this, {
+							const nextPage = await authenticatedRequest(this, auth, {
 								method: toHttpRequestMethod('GET'),
 								url,
 								qs: { start, limit: 100 },
@@ -3165,7 +3421,17 @@ export class NetSapiens implements INodeType {
 							start += nextItems.length;
 						}
 					}
-				} catch {
+				} catch (error: unknown) {
+					// On auth failure (401/403), fall back to the user's own domain
+					const statusCode = getHttpStatusCode(error);
+					const errorText = error instanceof Error ? error.message : '';
+					if (isAuthFailureStatus(statusCode, errorText)) {
+						const fallback = await fetchMyDomainFallback(this, auth, baseUrl);
+						if (fallback.length) {
+							domainsCacheByBaseUrl.set(authCacheKey(auth), { fetchedAtMs: now, options: fallback });
+							return fallback;
+						}
+					}
 					return cached?.options ?? [];
 				}
 
@@ -3188,21 +3454,18 @@ export class NetSapiens implements INodeType {
 
 				options.sort((a, b) => a.name.localeCompare(b.name));
 
-				domainsCacheByBaseUrl.set(baseUrl, { fetchedAtMs: now, options });
+				domainsCacheByBaseUrl.set(authCacheKey(auth), { fetchedAtMs: now, options });
 				return options;
 			},
 
 			async getUsersForDomain(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				let baseUrl = '';
+				let auth: AuthInfo;
 				try {
-					const credentials = (await this.getCredentials('netSapiensApi')) as {
-						server?: string;
-						baseUrl?: string;
-					};
-					baseUrl = resolveBaseUrl(credentials);
+					auth = await resolveAuth(this);
 				} catch {
 					return [];
 				}
+				const baseUrl = auth.baseUrl;
 
 				let operationId: string | undefined;
 				try {
@@ -3228,7 +3491,7 @@ export class NetSapiens implements INodeType {
 				}
 
 				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
-				const cacheKey = `${baseUrl}::${domain}`;
+				const cacheKey = `${authCacheKey(auth)}::${domain}`;
 
 				const now = Date.now();
 				const cached = usersCacheByBaseUrlAndDomain.get(cacheKey);
@@ -3239,11 +3502,21 @@ export class NetSapiens implements INodeType {
 				let response: unknown;
 				try {
 					const url = `${baseUrl}/domains/${encodeURIComponent(domain)}/users`;
-					response = await netSapiensRequest(this, {
+					response = await authenticatedRequest(this, auth, {
 						method: toHttpRequestMethod('GET'),
 						url,
 					});
-				} catch {
+				} catch (error: unknown) {
+					// On auth failure, fall back to the user's own info
+					const statusCode = getHttpStatusCode(error);
+					const errorText = error instanceof Error ? error.message : '';
+					if (isAuthFailureStatus(statusCode, errorText)) {
+						const fallback = await fetchMyUserFallback(this, auth, baseUrl);
+						if (fallback.length) {
+							usersCacheByBaseUrlAndDomain.set(cacheKey, { fetchedAtMs: now, options: fallback });
+							return fallback;
+						}
+					}
 					return cached?.options ?? [];
 				}
 
@@ -3285,20 +3558,17 @@ export class NetSapiens implements INodeType {
 		},
 		listSearch: {
 			async searchDomains(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
-				let baseUrl = '';
+				let auth: AuthInfo;
 				try {
-					const credentials = (await this.getCredentials('netSapiensApi')) as {
-						server?: string;
-						baseUrl?: string;
-					};
-					baseUrl = resolveBaseUrl(credentials);
+					auth = await resolveAuth(this);
 				} catch {
 					return { results: [] };
 				}
+				const baseUrl = auth.baseUrl;
 
 				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
 				const now = Date.now();
-				const cached = domainsCacheByBaseUrl.get(baseUrl);
+				const cached = domainsCacheByBaseUrl.get(authCacheKey(auth));
 
 				let options: INodePropertyOptions[] = [];
 				if (!shouldRefresh && cached && cached.options.length && now - cached.fetchedAtMs < loadOptionsTtlMs) {
@@ -3307,7 +3577,7 @@ export class NetSapiens implements INodeType {
 					let items: unknown[];
 					try {
 						const url = `${baseUrl}/domains`;
-						const page = await netSapiensRequest(this, {
+						const page = await authenticatedRequest(this, auth, {
 							method: toHttpRequestMethod('GET'),
 							url,
 							qs: { start: 0, limit: 100 },
@@ -3317,7 +3587,7 @@ export class NetSapiens implements INodeType {
 						if (items.length === 100) {
 							let start = 100;
 							while (start < 100000) {
-								const nextPage = await netSapiensRequest(this, {
+								const nextPage = await authenticatedRequest(this, auth, {
 									method: toHttpRequestMethod('GET'),
 									url,
 									qs: { start, limit: 100 },
@@ -3330,8 +3600,20 @@ export class NetSapiens implements INodeType {
 								start += nextItems.length;
 							}
 						}
-					} catch {
-						options = cached?.options ?? [];
+					} catch (error: unknown) {
+						// On auth failure, fall back to the user's own domain
+						const statusCode = getHttpStatusCode(error);
+						const errorText = error instanceof Error ? error.message : '';
+						if (isAuthFailureStatus(statusCode, errorText)) {
+							const fallback = await fetchMyDomainFallback(this, auth, baseUrl);
+							if (fallback.length) {
+								domainsCacheByBaseUrl.set(authCacheKey(auth), { fetchedAtMs: now, options: fallback });
+								options = fallback;
+							}
+						}
+						if (!options.length) {
+							options = cached?.options ?? [];
+						}
 						items = [];
 					}
 
@@ -3346,7 +3628,7 @@ export class NetSapiens implements INodeType {
 							next.push({ name: formatDomainLabel(value, domain), value: domain });
 						}
 						next.sort((a, b) => a.name.localeCompare(b.name));
-						domainsCacheByBaseUrl.set(baseUrl, { fetchedAtMs: now, options: next });
+						domainsCacheByBaseUrl.set(authCacheKey(auth), { fetchedAtMs: now, options: next });
 						options = next;
 					}
 				}
@@ -3364,16 +3646,13 @@ export class NetSapiens implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				let baseUrl = '';
+				let auth: AuthInfo;
 				try {
-					const credentials = (await this.getCredentials('netSapiensApi')) as {
-						server?: string;
-						baseUrl?: string;
-					};
-					baseUrl = resolveBaseUrl(credentials);
+					auth = await resolveAuth(this);
 				} catch {
 					return { results: [] };
 				}
+				const baseUrl = auth.baseUrl;
 
 				let operationId: string | undefined;
 				try {
@@ -3409,7 +3688,7 @@ export class NetSapiens implements INodeType {
 				}
 
 				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
-				const cacheKey = `${baseUrl}::${domain}`;
+				const cacheKey = `${authCacheKey(auth)}::${domain}`;
 				const now = Date.now();
 				const cached = usersCacheByBaseUrlAndDomain.get(cacheKey);
 
@@ -3420,12 +3699,24 @@ export class NetSapiens implements INodeType {
 					let response: unknown;
 					try {
 						const url = `${baseUrl}/domains/${encodeURIComponent(domain)}/users`;
-						response = await netSapiensRequest(this, {
+						response = await authenticatedRequest(this, auth, {
 							method: toHttpRequestMethod('GET'),
 							url,
 						});
-					} catch {
-						options = cached?.options ?? [];
+					} catch (error: unknown) {
+						// On auth failure, fall back to the user's own info
+						const statusCode = getHttpStatusCode(error);
+						const errorText = error instanceof Error ? error.message : '';
+						if (isAuthFailureStatus(statusCode, errorText)) {
+							const fallback = await fetchMyUserFallback(this, auth, baseUrl);
+							if (fallback.length) {
+								usersCacheByBaseUrlAndDomain.set(cacheKey, { fetchedAtMs: now, options: fallback });
+								options = fallback;
+							}
+						}
+						if (!options.length) {
+							options = cached?.options ?? [];
+						}
 						response = undefined;
 					}
 
@@ -3471,16 +3762,13 @@ export class NetSapiens implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				let baseUrl = '';
+				let auth: AuthInfo;
 				try {
-					const credentials = (await this.getCredentials('netSapiensApi')) as {
-						server?: string;
-						baseUrl?: string;
-					};
-					baseUrl = resolveBaseUrl(credentials);
+					auth = await resolveAuth(this);
 				} catch {
 					return { results: [] };
 				}
+				const baseUrl = auth.baseUrl;
 
 				let operationId: string | undefined;
 				try {
@@ -3516,7 +3804,7 @@ export class NetSapiens implements INodeType {
 				}
 
 				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
-				const cacheKey = `${baseUrl}::${domain}`;
+				const cacheKey = `${authCacheKey(auth)}::${domain}`;
 				const now = Date.now();
 				const cached = sitesCacheByBaseUrlAndDomain.get(cacheKey);
 
@@ -3527,7 +3815,7 @@ export class NetSapiens implements INodeType {
 					let response: unknown;
 					try {
 						const url = `${baseUrl}/domains/${encodeURIComponent(domain)}/sites/list`;
-						response = await netSapiensRequest(this, {
+						response = await authenticatedRequest(this, auth, {
 							method: toHttpRequestMethod('GET'),
 							url,
 						});
@@ -3581,16 +3869,13 @@ export class NetSapiens implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				let baseUrl = '';
+				let auth: AuthInfo;
 				try {
-					const credentials = (await this.getCredentials('netSapiensApi')) as {
-						server?: string;
-						baseUrl?: string;
-					};
-					baseUrl = resolveBaseUrl(credentials);
+					auth = await resolveAuth(this);
 				} catch {
 					return { results: [] };
 				}
+				const baseUrl = auth.baseUrl;
 
 				let operationId: string | undefined;
 				try {
@@ -3626,7 +3911,7 @@ export class NetSapiens implements INodeType {
 				}
 
 				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
-				const cacheKey = `${baseUrl}::${domain}`;
+				const cacheKey = `${authCacheKey(auth)}::${domain}`;
 				const now = Date.now();
 				const cached = emergencyAddressesCacheByBaseUrlAndDomain.get(cacheKey);
 
@@ -3637,7 +3922,7 @@ export class NetSapiens implements INodeType {
 					let response: unknown;
 					try {
 						const url = `${baseUrl}/domains/${encodeURIComponent(domain)}/addresses`;
-						response = await netSapiensRequest(this, {
+						response = await authenticatedRequest(this, auth, {
 							method: toHttpRequestMethod('GET'),
 							url,
 						});
@@ -3757,20 +4042,17 @@ export class NetSapiens implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				let baseUrl = '';
+				let auth: AuthInfo;
 				try {
-					const credentials = (await this.getCredentials('netSapiensApi')) as {
-						server?: string;
-						baseUrl?: string;
-					};
-					baseUrl = resolveBaseUrl(credentials);
+					auth = await resolveAuth(this);
 				} catch {
 					return { results: [] };
 				}
+				const baseUrl = auth.baseUrl;
 
 				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
 				const now = Date.now();
-				const cached = holidayCountriesCacheByBaseUrl.get(baseUrl);
+				const cached = holidayCountriesCacheByBaseUrl.get(authCacheKey(auth));
 
 				let options: INodePropertyOptions[] = [];
 				if (!shouldRefresh && cached && cached.options.length && now - cached.fetchedAtMs < loadOptionsTtlMs) {
@@ -3779,7 +4061,7 @@ export class NetSapiens implements INodeType {
 					let response: unknown;
 					try {
 						const url = `${baseUrl}/holidays/countries`;
-						response = await netSapiensRequest(this, {
+						response = await authenticatedRequest(this, auth, {
 							method: toHttpRequestMethod('GET'),
 							url,
 						});
@@ -3802,7 +4084,7 @@ export class NetSapiens implements INodeType {
 							const nameParts = [code, countryName, flag].filter((part) => Boolean(part));
 							next.push({ name: nameParts.join(' - '), value: code });
 						}
-						holidayCountriesCacheByBaseUrl.set(baseUrl, { fetchedAtMs: now, options: next });
+						holidayCountriesCacheByBaseUrl.set(authCacheKey(auth), { fetchedAtMs: now, options: next });
 						options = next;
 					}
 				}
@@ -3820,16 +4102,13 @@ export class NetSapiens implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				let baseUrl = '';
+				let auth: AuthInfo;
 				try {
-					const credentials = (await this.getCredentials('netSapiensApi')) as {
-						server?: string;
-						baseUrl?: string;
-					};
-					baseUrl = resolveBaseUrl(credentials);
+					auth = await resolveAuth(this);
 				} catch {
 					return { results: [] };
 				}
+				const baseUrl = auth.baseUrl;
 
 				let operationId: string | undefined;
 				try {
@@ -3854,7 +4133,7 @@ export class NetSapiens implements INodeType {
 
 				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
 				const now = Date.now();
-				const cached = holidayRegionsCacheByBaseUrl.get(baseUrl);
+				const cached = holidayRegionsCacheByBaseUrl.get(authCacheKey(auth));
 
 				let options: INodePropertyOptions[] = [];
 				if (!shouldRefresh && cached && cached.options.length && now - cached.fetchedAtMs < loadOptionsTtlMs) {
@@ -3863,7 +4142,7 @@ export class NetSapiens implements INodeType {
 					let response: unknown;
 					try {
 						const url = `${baseUrl}/holidays/regions`;
-						response = await netSapiensRequest(this, {
+						response = await authenticatedRequest(this, auth, {
 							method: toHttpRequestMethod('GET'),
 							url,
 						});
@@ -3930,7 +4209,7 @@ export class NetSapiens implements INodeType {
 							}
 						}
 
-						holidayRegionsCacheByBaseUrl.set(baseUrl, { fetchedAtMs: now, options: next });
+						holidayRegionsCacheByBaseUrl.set(authCacheKey(auth), { fetchedAtMs: now, options: next });
 						options = next;
 					}
 				}
@@ -3955,20 +4234,17 @@ export class NetSapiens implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				let baseUrl = '';
+				let auth: AuthInfo;
 				try {
-					const credentials = (await this.getCredentials('netSapiensApi')) as {
-						server?: string;
-						baseUrl?: string;
-					};
-					baseUrl = resolveBaseUrl(credentials);
+					auth = await resolveAuth(this);
 				} catch {
 					return { results: [] };
 				}
+				const baseUrl = auth.baseUrl;
 
 				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
 				const now = Date.now();
-				const cached = resellersCacheByBaseUrl.get(baseUrl);
+				const cached = resellersCacheByBaseUrl.get(authCacheKey(auth));
 
 				let options: INodePropertyOptions[] = [];
 				if (!shouldRefresh && cached && cached.options.length && now - cached.fetchedAtMs < loadOptionsTtlMs) {
@@ -3977,7 +4253,7 @@ export class NetSapiens implements INodeType {
 					let response: unknown;
 					try {
 						const url = `${baseUrl}/resellers`;
-						response = await netSapiensRequest(this, {
+						response = await authenticatedRequest(this, auth, {
 							method: toHttpRequestMethod('GET'),
 							url,
 						});
@@ -3999,7 +4275,7 @@ export class NetSapiens implements INodeType {
 							next.push({ name, value: reseller });
 						}
 						next.sort((a, b) => a.name.localeCompare(b.name));
-						resellersCacheByBaseUrl.set(baseUrl, { fetchedAtMs: now, options: next });
+						resellersCacheByBaseUrl.set(authCacheKey(auth), { fetchedAtMs: now, options: next });
 						options = next;
 					}
 				}
@@ -4017,20 +4293,17 @@ export class NetSapiens implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				let baseUrl = '';
+				let auth: AuthInfo;
 				try {
-					const credentials = (await this.getCredentials('netSapiensApi')) as {
-						server?: string;
-						baseUrl?: string;
-					};
-					baseUrl = resolveBaseUrl(credentials);
+					auth = await resolveAuth(this);
 				} catch {
 					return { results: [] };
 				}
+				const baseUrl = auth.baseUrl;
 
 				const shouldRefresh = Boolean(this.getCurrentNodeParameter('refreshOptions') ?? false);
 				const now = Date.now();
-				const cached = wsServersCacheByBaseUrl.get(baseUrl);
+				const cached = wsServersCacheByBaseUrl.get(authCacheKey(auth));
 
 				let options: INodePropertyOptions[] = [];
 				if (!shouldRefresh && cached && cached.options.length && now - cached.fetchedAtMs < loadOptionsTtlMs) {
@@ -4039,7 +4312,7 @@ export class NetSapiens implements INodeType {
 					let response: unknown;
 					try {
 						const url = `${baseUrl}/configurations/${encodeURIComponent('WS_SERVERS')}`;
-						response = await netSapiensRequest(this, {
+						response = await authenticatedRequest(this, auth, {
 							method: toHttpRequestMethod('GET'),
 							url,
 						});
@@ -4057,7 +4330,7 @@ export class NetSapiens implements INodeType {
 							.map((v) => v.trim())
 							.filter(Boolean);
 						const next: INodePropertyOptions[] = servers.map((server) => ({ name: server, value: server }));
-						wsServersCacheByBaseUrl.set(baseUrl, { fetchedAtMs: now, options: next });
+						wsServersCacheByBaseUrl.set(authCacheKey(auth), { fetchedAtMs: now, options: next });
 						options = next;
 					}
 				}
@@ -4074,16 +4347,13 @@ export class NetSapiens implements INodeType {
 			async searchMediaItems(
 				this: ILoadOptionsFunctions,
 			): Promise<INodeListSearchResult> {
-				let baseUrl = '';
+				let auth: AuthInfo;
 				try {
-					const credentials = (await this.getCredentials('netSapiensApi')) as {
-						server?: string;
-						baseUrl?: string;
-					};
-					baseUrl = resolveBaseUrl(credentials);
+					auth = await resolveAuth(this);
 				} catch {
 					return { results: [] };
 				}
+				const baseUrl = auth.baseUrl;
 
 				let operationId: string | undefined;
 				try {
@@ -4153,7 +4423,7 @@ export class NetSapiens implements INodeType {
 
 				let response: unknown;
 				try {
-					response = await netSapiensRequest(this, {
+					response = await authenticatedRequest(this, auth, {
 						method: toHttpRequestMethod('GET'),
 						url: readUrl,
 					});
@@ -4205,11 +4475,8 @@ export class NetSapiens implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const credentials = (await this.getCredentials('netSapiensApi')) as {
-			server?: string;
-			baseUrl?: string;
-		};
-		const baseUrl = resolveBaseUrl(credentials);
+		const auth = await resolveAuth(this);
+		const baseUrl = auth.baseUrl;
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const resource = this.getNodeParameter('resource', itemIndex) as string;
@@ -4236,7 +4503,7 @@ export class NetSapiens implements INodeType {
 
 					const url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
-					const response = await netSapiensRequest(this, {
+					const response = await authenticatedRequest(this, auth, {
 						method,
 						url,
 						qs,
@@ -4245,10 +4512,10 @@ export class NetSapiens implements INodeType {
 
 					if (Array.isArray(response)) {
 						for (const entry of response) {
-							returnData.push({ json: toIDataObject(entry) });
+							returnData.push({ json: toIDataObject(entry), pairedItem: { item: itemIndex } });
 						}
 					} else {
-						returnData.push({ json: toIDataObject(response) });
+						returnData.push({ json: toIDataObject(response), pairedItem: { item: itemIndex } });
 					}
 
 					continue;
@@ -4277,10 +4544,10 @@ export class NetSapiens implements INodeType {
 
 						if (Array.isArray(response)) {
 							for (const entry of response) {
-								returnData.push({ json: withJwtExpirationValidation(entry) });
+								returnData.push({ json: withJwtExpirationValidation(entry), pairedItem: { item: itemIndex } });
 							}
 						} else {
-							returnData.push({ json: withJwtExpirationValidation(response) });
+							returnData.push({ json: withJwtExpirationValidation(response), pairedItem: { item: itemIndex } });
 						}
 					} catch (error) {
 						const statusCode = getHttpStatusCode(error);
@@ -4297,12 +4564,81 @@ export class NetSapiens implements INodeType {
 											: 'JWT rejected by API (401 Unauthorized)',
 									statusCode,
 								},
+								pairedItem: { item: itemIndex },
 							});
 						} else {
 							throw error;
 						}
 					}
 
+					continue;
+				}
+
+				if (
+					resource === authenticationUserCredsResource &&
+					operationId === validateUserCredsOperationId
+				) {
+					const validateUsername = String(
+						this.getNodeParameter(validateUserCredsUsernameParam, itemIndex, ''),
+					).trim();
+					const validatePassword = String(
+						this.getNodeParameter(validateUserCredsPasswordParam, itemIndex, ''),
+					);
+
+					if (!validateUsername) {
+						throw new NodeOperationError(this.getNode(), 'Username is required', {
+							itemIndex,
+						});
+					}
+					if (!validatePassword) {
+						throw new NodeOperationError(this.getNode(), 'Password is required', {
+							itemIndex,
+						});
+					}
+
+					let clientId: string;
+					let clientSecret: string;
+					const server =
+						auth.authType === 'oAuth2' && auth.oauth2Credentials
+							? auth.oauth2Credentials.server
+							: baseUrl.replace(/^https?:\/\//, '').replace(/\/ns-api\/v2$/, '');
+
+					if (auth.authType === 'oAuth2' && auth.oauth2Credentials) {
+						clientId = auth.oauth2Credentials.clientId;
+						clientSecret = auth.oauth2Credentials.clientSecret;
+					} else {
+						clientId = String(
+							this.getNodeParameter(validateUserCredsClientIdParam, itemIndex, ''),
+						).trim();
+						clientSecret = String(
+							this.getNodeParameter(validateUserCredsClientSecretParam, itemIndex, ''),
+						);
+						if (!clientId) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Client ID is required when using API Key authentication',
+								{ itemIndex },
+							);
+						}
+						if (!clientSecret) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Client Secret is required when using API Key authentication',
+								{ itemIndex },
+							);
+						}
+					}
+
+					const result = await validateUserCredentials(
+						this,
+						server,
+						clientId,
+						clientSecret,
+						validateUsername,
+						validatePassword,
+					);
+
+					returnData.push({ json: result, pairedItem: { item: itemIndex } });
 					continue;
 				}
 
@@ -4317,7 +4653,7 @@ export class NetSapiens implements INodeType {
 
 				if (operation.id === 'GetAuditlog') {
 					const shouldRefresh = Boolean(this.getNodeParameter('refreshOptions', itemIndex, false));
-					const apiVersion = await getServerApiVersion(this, baseUrl, { refresh: shouldRefresh });
+					const apiVersion = await getServerApiVersion(this, auth, baseUrl, { refresh: shouldRefresh });
 					if (typeof apiVersion.major === 'number' && apiVersion.major < 45) {
 						const raw = apiVersion.raw ? ` (${apiVersion.raw})` : '';
 						throw new NodeOperationError(
@@ -4447,7 +4783,7 @@ export class NetSapiens implements INodeType {
 
 					let response: unknown;
 					try {
-						response = await netSapiensRequest(this, requestOptions);
+						response = await authenticatedRequest(this, auth, requestOptions);
 					} catch (error) {
 						if (operation.id === templatedUserCreateId && requestMode === 'sync') {
 							const fallbackBody = buildTemplatedBody(
@@ -4461,7 +4797,7 @@ export class NetSapiens implements INodeType {
 								},
 							);
 							try {
-								response = await netSapiensRequest(this, {
+								response = await authenticatedRequest(this, auth, {
 									...requestOptions,
 									body: fallbackBody,
 								});
@@ -4481,16 +4817,17 @@ export class NetSapiens implements INodeType {
 						: response;
 
 					if (operation.id === templatedUserDeleteId) {
-						returnData.push({ json: { ...toAcknowledgement(statusCode), response: toIDataObject(responseBody) } });
+						returnData.push({ json: { ...toAcknowledgement(statusCode), response: toIDataObject(responseBody) }, pairedItem: { item: itemIndex } });
 						continue;
 					}
 
 					if (operation.id === templatedUserUpdateId) {
 						if (statusCode === 200 && responseBody && typeof responseBody === 'object') {
-							returnData.push({ json: toIDataObject(responseBody) });
+							returnData.push({ json: toIDataObject(responseBody), pairedItem: { item: itemIndex } });
 						} else {
 							returnData.push({
 								json: { ...toAcknowledgement(statusCode), response: toIDataObject(responseBody) },
+								pairedItem: { item: itemIndex },
 							});
 						}
 						continue;
@@ -4499,10 +4836,11 @@ export class NetSapiens implements INodeType {
 					if (operation.id === templatedUserCreateId) {
 						if (requestMode === 'sync') {
 							if (statusCode === 200 && responseBody && typeof responseBody === 'object') {
-								returnData.push({ json: toIDataObject(responseBody) });
+								returnData.push({ json: toIDataObject(responseBody), pairedItem: { item: itemIndex } });
 							} else {
 								returnData.push({
 									json: { ...toAcknowledgement(statusCode), response: toIDataObject(responseBody) },
+									pairedItem: { item: itemIndex },
 								});
 							}
 							continue;
@@ -4521,12 +4859,14 @@ export class NetSapiens implements INodeType {
 									...submitted,
 									...toAcknowledgement(statusCode),
 								},
+								pairedItem: { item: itemIndex },
 							});
 							continue;
 						}
 
 						returnData.push({
 							json: { ...toAcknowledgement(statusCode), response: toIDataObject(responseBody) },
+							pairedItem: { item: itemIndex },
 						});
 						continue;
 					}
@@ -4581,7 +4921,7 @@ export class NetSapiens implements INodeType {
 							mediaBody.voice_id = voiceId;
 						}
 
-						const response = await netSapiensRequest(this, {
+						const response = await authenticatedRequest(this, auth, {
 							method,
 							url,
 							qs: Object.keys(queryParams).length ? (queryParams as IDataObject) : undefined,
@@ -4592,7 +4932,7 @@ export class NetSapiens implements INodeType {
 						const responseBody = isFullHttpResponse(response)
 							? (response as unknown as { body: unknown }).body
 							: response;
-						returnData.push({ json: toIDataObject(responseBody) });
+						returnData.push({ json: toIDataObject(responseBody), pairedItem: { item: itemIndex } });
 						continue;
 					}
 
@@ -4678,9 +5018,9 @@ export class NetSapiens implements INodeType {
 							// NetSapiens API only accepts multipart/form-data via POST, even for updates
 							const multipartMethod = 'POST' as const;
 
-							const response = await this.helpers.httpRequestWithAuthentication.call(
+							const response = await authenticatedMultipartRequest(
 								this,
-								'netSapiensApi',
+								auth,
 								{
 									method: multipartMethod,
 									url,
@@ -4711,9 +5051,9 @@ export class NetSapiens implements INodeType {
 							}
 
 							if (statusCode === 200 || statusCode === 202) {
-								returnData.push({ json: toIDataObject(responseBody) });
+								returnData.push({ json: toIDataObject(responseBody), pairedItem: { item: itemIndex } });
 							} else {
-								returnData.push({ json: { statusCode, response: toIDataObject(responseBody) } });
+								returnData.push({ json: { statusCode, response: toIDataObject(responseBody) }, pairedItem: { item: itemIndex } });
 							}
 							continue;
 						}
@@ -4773,9 +5113,9 @@ export class NetSapiens implements INodeType {
 							// NetSapiens API only accepts multipart/form-data via POST, even for updates
 							const multipartMethod = 'POST' as const;
 
-							const response = await this.helpers.httpRequestWithAuthentication.call(
+							const response = await authenticatedMultipartRequest(
 								this,
-								'netSapiensApi',
+								auth,
 								{
 									method: multipartMethod,
 									url,
@@ -4799,7 +5139,7 @@ export class NetSapiens implements INodeType {
 									// Keep as string
 								}
 							}
-							returnData.push({ json: toIDataObject(responseBody) });
+							returnData.push({ json: toIDataObject(responseBody), pairedItem: { item: itemIndex } });
 							continue;
 						}
 
@@ -4811,7 +5151,7 @@ export class NetSapiens implements INodeType {
 							mediaBody.encoding = encodingParam;
 						}
 
-						const response = await netSapiensRequest(this, {
+						const response = await authenticatedRequest(this, auth, {
 							method,
 							url,
 							qs: Object.keys(queryParams).length ? (queryParams as IDataObject) : undefined,
@@ -4822,7 +5162,7 @@ export class NetSapiens implements INodeType {
 						const responseBody = isFullHttpResponse(response)
 							? (response as unknown as { body: unknown }).body
 							: response;
-						returnData.push({ json: toIDataObject(responseBody) });
+						returnData.push({ json: toIDataObject(responseBody), pairedItem: { item: itemIndex } });
 						continue;
 					}
 				}
@@ -4902,9 +5242,9 @@ export class NetSapiens implements INodeType {
 						// NetSapiens API only accepts multipart/form-data via POST
 						const multipartMethod = 'POST' as const;
 
-						const response = await this.helpers.httpRequestWithAuthentication.call(
+						const response = await authenticatedMultipartRequest(
 							this,
-							'netSapiensApi',
+							auth,
 							{
 								method: multipartMethod,
 								url,
@@ -4934,9 +5274,9 @@ export class NetSapiens implements INodeType {
 						}
 
 						if (statusCode === 200 || statusCode === 202) {
-							returnData.push({ json: toIDataObject(responseBody) });
+							returnData.push({ json: toIDataObject(responseBody), pairedItem: { item: itemIndex } });
 						} else {
-							returnData.push({ json: { statusCode, response: toIDataObject(responseBody) } });
+							returnData.push({ json: { statusCode, response: toIDataObject(responseBody) }, pairedItem: { item: itemIndex } });
 						}
 						continue;
 					}
@@ -4964,7 +5304,7 @@ export class NetSapiens implements INodeType {
 						imageBody.server = serverParam;
 					}
 
-					const response = await netSapiensRequest(this, {
+					const response = await authenticatedRequest(this, auth, {
 						method,
 						url,
 						qs: Object.keys(queryParams).length ? (queryParams as IDataObject) : undefined,
@@ -4975,7 +5315,7 @@ export class NetSapiens implements INodeType {
 					const responseBody = isFullHttpResponse(response)
 						? (response as unknown as { body: unknown }).body
 						: response;
-					returnData.push({ json: toIDataObject(responseBody) });
+					returnData.push({ json: toIDataObject(responseBody), pairedItem: { item: itemIndex } });
 					continue;
 				}
 
@@ -5000,13 +5340,13 @@ export class NetSapiens implements INodeType {
 					);
 
 					if (returnAll) {
-						const aggregated = await requestAllPages(this, {
+						const aggregated = await requestAllPages(this, auth, {
 							url,
 							qs: Object.keys(queryParams).length ? (queryParams as IDataObject) : undefined,
 						});
 
 						for (const entry of aggregated) {
-							returnData.push({ json: entry });
+							returnData.push({ json: entry, pairedItem: { item: itemIndex } });
 						}
 						continue;
 					}
@@ -5025,7 +5365,7 @@ export class NetSapiens implements INodeType {
 					}
 				}
 
-				const response = await netSapiensRequest(this, {
+				const response = await authenticatedRequest(this, auth, {
 					method: toHttpRequestMethod(operation.method),
 					url,
 					qs: Object.keys(queryParams).length ? (queryParams as IDataObject) : undefined,
@@ -5034,14 +5374,41 @@ export class NetSapiens implements INodeType {
 
 				if (Array.isArray(response)) {
 					for (const entry of response) {
-						returnData.push({ json: toIDataObject(entry) });
+						returnData.push({ json: toIDataObject(entry), pairedItem: { item: itemIndex } });
 					}
 				} else {
-					returnData.push({ json: toIDataObject(response) });
+					returnData.push({ json: toIDataObject(response), pairedItem: { item: itemIndex } });
 				}
 			} catch (error) {
+				// If continueOnFail is enabled, push an error item instead of throwing.
+				// This must be checked first, before any specific error handlers that throw.
+				if (this.continueOnFail()) {
+					const message = error instanceof Error ? error.message : 'Unknown error';
+					returnData.push({ json: { error: message }, pairedItem: { item: itemIndex } });
+					continue;
+				}
+
 				const errorText = getErrorText(error);
 				const statusCode = getHttpStatusCode(error);
+
+				// "Get My Domain" and "Get My User" require a user-scoped token (OAuth2).
+				// API keys are not tied to a specific user, so these endpoints return 400.
+				if (
+					(operationId === 'GetMyDomain' || operationId === 'GetMyUser') &&
+					statusCode === 400 &&
+					auth.authType === 'apiKey'
+				) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`'${operationId === 'GetMyDomain' ? 'Get My Domain Info' : 'Get My User'}' requires a user-scoped credential`,
+						{
+							itemIndex,
+							description:
+								'API keys are not tied to a specific user, so "my domain" and "my user" cannot be determined. ' +
+								'Switch to OAuth2 authentication (which authenticates as a specific user) or use the standard Get operation with an explicit domain or user ID.',
+						},
+					);
+				}
 
 				if (operationId === validateJwtOperationId && isAuthFailureStatus(statusCode, errorText)) {
 					const now = new Date().toISOString();
@@ -5055,6 +5422,7 @@ export class NetSapiens implements INodeType {
 									: 'JWT rejected by API (401 Unauthorized)',
 							statusCode,
 						},
+						pairedItem: { item: itemIndex },
 					});
 					continue;
 				}
@@ -5072,6 +5440,7 @@ export class NetSapiens implements INodeType {
 							operationId,
 							statusCode,
 						},
+						pairedItem: { item: itemIndex },
 					});
 					continue;
 				}
@@ -5081,7 +5450,7 @@ export class NetSapiens implements INodeType {
 
 				if (operationId === 'GetAuditlog') {
 					const shouldRefresh = Boolean(this.getNodeParameter('refreshOptions', itemIndex, false));
-					const apiVersion = await getServerApiVersion(this, baseUrl, { refresh: shouldRefresh });
+					const apiVersion = await getServerApiVersion(this, auth, baseUrl, { refresh: shouldRefresh });
 					if (isNoRouteFound) {
 						const versionText = apiVersion.raw
 							? ` Detected API version: ${apiVersion.raw}.`
@@ -5099,7 +5468,7 @@ export class NetSapiens implements INodeType {
 
 				if (isNoRouteFound) {
 					const shouldRefresh = Boolean(this.getNodeParameter('refreshOptions', itemIndex, false));
-					const apiVersion = await getServerApiVersion(this, baseUrl, { refresh: shouldRefresh });
+					const apiVersion = await getServerApiVersion(this, auth, baseUrl, { refresh: shouldRefresh });
 					const versionText = apiVersion.raw
 						? ` Detected API version: ${apiVersion.raw}.`
 						: ' Unable to detect API version from /version.';

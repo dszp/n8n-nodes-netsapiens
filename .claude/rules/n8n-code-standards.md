@@ -14,7 +14,7 @@ Reference: https://docs.n8n.io/integrations/creating-nodes/build/reference/code-
 ## Core Rules
 
 - **Write in TypeScript** with proper typing
-- **Use the n8n linter**: Must pass `pnpm run lint` before publishing
+- **Use the n8n linter**: Must pass `npm run lint` before publishing
 - **No external runtime dependencies** (required for community node verification)
 - **No environment variables or filesystem access** — pass all data through node parameters
 - **English language only** — all interface text, docs, error messages, and README

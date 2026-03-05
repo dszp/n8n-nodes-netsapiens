@@ -6,7 +6,7 @@ n8n community node for the NetSapiens VoIP/PBX REST API (ns-api v2). Published t
 
 - **Type**: Programmatic n8n node (not declarative) — chosen for REST API integration with custom logic, file uploads, pagination, and OpenAPI code generation
 - **Node API Version**: 1 (stable)
-- **Package manager**: pnpm (v9.15.4)
+- **Package manager**: npm
 - **TypeScript target**: ES2019, strict mode enabled
 - **Current version**: Check `package.json` for latest
 
@@ -36,13 +36,13 @@ tools/
 ## Key Commands
 
 ```bash
-pnpm install          # Install dependencies
-pnpm run build        # Generate openapi.ts + compile (npm run generate && n8n-node build)
-pnpm run generate     # Regenerate generated/openapi.ts from OpenAPI spec
-pnpm run dev          # Launch n8n locally with this node loaded
-pnpm run lint         # Run n8n node linter (eslint-plugin-n8n-nodes-base)
-pnpm run lint:fix     # Auto-fix lint issues
-pnpm run release      # Publish release via release-it
+npm install          # Install dependencies
+npm run build        # Generate openapi.ts + compile (npm run generate && n8n-node build)
+npm run generate     # Regenerate generated/openapi.ts from OpenAPI spec
+npm run dev          # Launch n8n locally with this node loaded
+npm run lint         # Run n8n node linter (eslint-plugin-n8n-nodes-base)
+npm run lint:fix     # Auto-fix lint issues
+npm run release      # Publish release via release-it
 ```
 
 ## Architecture & Key Patterns
@@ -52,13 +52,14 @@ pnpm run release      # Publish release via release-it
 2. `tools/generate-openapi.ts` parses the spec and generates `generated/openapi.ts`
 3. `overrides/operations.overrides.ts` provides display name corrections and visibility overrides
 4. `NetSapiens.node.ts` imports generated operations/resources and applies overrides at runtime
-5. **Never edit `generated/openapi.ts` directly** — regenerate via `pnpm run generate`
+5. **Never edit `generated/openapi.ts` directly** — regenerate via `npm run generate`
 
 ### Credential Authentication
-- Uses bearer token (API key) auth via `Authorization: Bearer {token}` header
-- Credentials tested against `GET /domains` endpoint
-- Base URL defaults to `https://{server}/ns-api/v2` with optional override
-- OAuth is NOT yet implemented (see `oauth-support` branch for WIP)
+- Single credential type (`netSapiensApi`) with auth type toggle inside the credential dialog
+- **API Key**: Uses bearer token auth via `Authorization: Bearer {token}` header; tested against `GET /domains`
+- **OAuth2 (Password Grant)**: Uses `POST /ns-api/v2/tokens` with automatic token caching/refresh; tested by POSTing directly to the tokens endpoint
+- Base URL defaults to `https://{server}/ns-api/v2` with optional override (API key only)
+- Restricted OAuth2 users fall back to `/domains/~` and `/domains/~/users/~` for dropdown data
 
 ### Transport Layer (`transport/request.ts`)
 - `netSapiensRequest()` — authenticated HTTP requests via n8n's credential system
@@ -92,7 +93,7 @@ pnpm run release      # Publish release via release-it
 
 ### Linting
 - ESLint with `eslint-plugin-n8n-nodes-base` — n8n-specific rules
-- Must pass lint before publishing: `pnpm run lint`
+- Must pass lint before publishing: `npm run lint`
 
 ### TypeScript
 - Strict mode with all checks enabled (`noImplicitAny`, `strictNullChecks`, `noUnusedLocals`, etc.)
@@ -113,9 +114,9 @@ Full reference also available in `.windsurf/rules/n8n-nodes-building-guide.md`.
 
 ## CI/CD
 
-- **CI** (`.github/workflows/ci.yml`): Runs lint + build on PRs and pushes to main (Node 22, pnpm 9.15.4)
+- **CI** (`.github/workflows/ci.yml`): Runs lint + build on PRs and pushes to main (Node 22)
 - **Release** (`.github/workflows/release-publish.yml`): Publishes to npm on GitHub Release using OIDC trusted publishing with provenance
-- **No automated tests** — testing is manual via `pnpm run dev` against NetSapiens instances
+- **No automated tests** — testing is manual via `npm run dev` against NetSapiens instances
 
 ## Key Documentation Links
 

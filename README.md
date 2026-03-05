@@ -58,23 +58,43 @@ In addition, the node includes a **Raw -> Request** operation that lets you call
 
 The node also includes a custom **Authentication/JWT (JSON Web Token) -> Validate JWT** operation. This operation accepts a token input (`JSON Web Token (ns_t)`) and validates it against `GET /jwt` using that provided token for the request.
 
+The node also includes a custom **Authentication/User Credentials -> Validate** operation. This operation validates a username and password against the NetSapiens OAuth2 token endpoint, returning a structured success or failure result without using the token for subsequent API calls.
+
 NetSapiens provides the [API JSON Schema](https://docs.ns-api.com/docs/download-full-api-json-schema-file) as part of their documentation, which this node uses to generate the basic node interface. The node also implements a number of overrides to handle NetSapiens-specific details and add additional functionality and affordances.
 
 Read operations are substantially better tested and usable than write calls, which may require build custom JSON objects for crate and update requests initially.
 
 ## Credentials
 
-Create a new **NetSapiens API** credential. This node is designed for [API Keys](https://docs.ns-api.com/docs/api-keys) (bearer tokens) as the default credential auth model.
+This node supports two authentication methods within a single **NetSapiens API** credential, selectable via the **Authentication Method** dropdown:
 
-OAuth Access Token and refresh-token flows are not currently supported in this node. JWT credential-login flows are also not supported as node credentials, though the node now includes a dedicated **Validate JWT** operation that accepts a JWT value as input for one request.
+### API Key (Bearer Token) — default
 
-Only NetSapiens API version 2 supports API keys, and this node only connects to API version 2 endpoints (though the API key would be valid for API version 1 as well, for versions of NetSapiens that support API version 2 credentials).
+Uses [API Keys](https://docs.ns-api.com/docs/api-keys) (bearer tokens) as the authentication method.
 
 - **Server**: Your NetSapiens API hostname (without protocol)
 - **Bearer Token**: An API key (bearer token) used for API requests
-- **Base URL** (optional): Override the full base URL. If empty, the node defaults to `https://{server}/ns-api/v2`.
+- **Base URL Override** (optional): Override the full base URL. If empty, the node defaults to `https://{server}/ns-api/v2`.
 
 Obtain an API key from your NetSapiens provider if you are a Reseller user, or obtain the API key directly from your NetSapiens instance if you have administrator access.
+
+Only NetSapiens API version 2 supports API keys, and this node only connects to API version 2 endpoints (though the API key would be valid for API version 1 as well, for versions of NetSapiens that support API version 2 credentials).
+
+### OAuth2 (Password Grant)
+
+Uses the OAuth2 password grant flow (`POST /ns-api/v2/tokens`) to obtain an access token using client credentials and a username/password.
+
+- **Server**: Your NetSapiens API hostname (without protocol)
+- **Client ID**: OAuth2 client identifier. Format varies by installation (e.g., `86716.apiscripts`, `teammateapi.uptimetm`).
+- **Client Secret**: OAuth2 client secret
+- **Username**: User login for OAuth2 authentication. Typically `user@domain` or `user@0000.territory.service`, but format may vary by installation.
+- **Password**: Password for the OAuth2 user
+
+The node automatically manages token caching and refresh. Tokens are cached and reused until they expire (with a 60-second buffer), at which point a new token is fetched automatically. If the v2 token endpoint is not available, the node falls back to the legacy `/ns-api/oauth2/token/` endpoint.
+
+OAuth2 credentials support restricted users — domain and user dropdowns automatically fall back to the user's own domain/user when the account lacks permission to list all domains or users.
+
+JWT credential-login flows are not supported as node credentials, though the node includes a dedicated **Validate JWT** operation that accepts a JWT value as input for one request.
 
 NetSapiens, as of this writing, runs a [Developer Sandbox](https://docs.ns-api.com/docs/developer-sandbox-ns-apicom) where you can test API usage if you would like.
 
