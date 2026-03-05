@@ -268,8 +268,10 @@ const templatedUserUpdateId = 'UpdateUser';
 const templatedUserDeleteId = 'DeleteUser';
 
 const validateJwtOperationId = 'ValidateJwt';
+const validateJwtFormatOperationId = 'ValidateJwtFormat';
 const authenticationJwtResource = 'Authentication/JWT (JSON Web Token)';
 const validateJwtTokenParamName = `${validateJwtOperationId}__token`;
+const validateJwtFormatTokenParamName = `${validateJwtFormatOperationId}__token`;
 
 const validateUserCredsOperationId = 'ValidateUserCredentials';
 const authenticationUserCredsResource = 'Authentication/User Credentials';
@@ -2069,6 +2071,13 @@ function getResourceOptions(): Options[] {
 		});
 	}
 
+	// Sort alphabetically by name (keep Raw at top by prefixing sort)
+	options.sort((a, b) => {
+		if (a.value === 'raw') return -1;
+		if (b.value === 'raw') return 1;
+		return a.name.localeCompare(b.name);
+	});
+
 	return options;
 }
 
@@ -2083,10 +2092,21 @@ function getOperationOptionsForResource(resource: string): Options[] {
 			const override = operationOverrides[o.id];
 			const baseLabel = override?.displayName ?? o.summary ?? o.id;
 			const label = formatOperationLabel(resource, baseLabel);
+			const minVersion = override?.minApiVersion ?? o.minApiVersion;
+			// Use raw summary for action (better for AI agents), falling back to label
+			const actionText = o.summary ?? label;
+			// For description, prioritize version note, then spec description
+			const specDescription = o.description?.trim() || undefined;
+			const descriptionText = minVersion
+				? `Requires NetSapiens API v${minVersion}+`
+				: specDescription
+					? specDescription.replace(/\n/g, ' ').slice(0, 200)
+					: undefined;
 			return {
-				name: label,
+				name: minVersion ? `${label} (v${minVersion}+)` : label,
 				value: o.id,
-				action: label,
+				action: minVersion ? `${actionText} (v${minVersion}+)` : actionText,
+				...(descriptionText && { description: descriptionText }),
 			};
 		});
 
@@ -2094,7 +2114,12 @@ function getOperationOptionsForResource(resource: string): Options[] {
 		resourceOperations.push({
 			name: 'Validate JWT',
 			value: validateJwtOperationId,
-			action: 'Validate JWT',
+			action: 'Validate a JWT token against the server',
+		});
+		resourceOperations.push({
+			name: 'Validate JWT Format',
+			value: validateJwtFormatOperationId,
+			action: 'Decode and validate a JWT token locally without server contact',
 		});
 	}
 
@@ -2314,8 +2339,41 @@ function buildOperationParameterFields(): INodeProperties[] {
 			},
 		},
 	});
+	fields.push({
+		displayName: 'JSON Web Token (ns_t)',
+		name: validateJwtFormatTokenParamName,
+		type: 'string',
+		default: '',
+		required: true,
+		typeOptions: {
+			password: true,
+		},
+		description:
+			'JWT token to decode and validate locally. The token is not sent to the server.',
+		displayOptions: {
+			show: {
+				resource: [authenticationJwtResource],
+				operation: [validateJwtFormatOperationId],
+			},
+		},
+	});
 
 	// Validate User Credentials operation fields
+	fields.push({
+		displayName:
+			'This operation validates a username/password against the OAuth2 token endpoint. ' +
+			'When using OAuth2 credentials, the Client ID and Client Secret are read automatically. ' +
+			'When using API Key credentials, you must provide them below.',
+		name: 'validateUserCredsNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [authenticationUserCredsResource],
+				operation: [validateUserCredsOperationId],
+			},
+		},
+	} as INodeProperties);
 	fields.push({
 		displayName: 'Username',
 		name: validateUserCredsUsernameParam,
@@ -3247,6 +3305,38 @@ export class NetSapiens implements INodeType {
 					noDataExpression: true,
 				} as INodeProperties;
 			}),
+			// Operation dropdown for custom User Credentials resource (not in generated resources)
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				options: getOperationOptionsForResource(authenticationUserCredsResource),
+				default: '',
+				displayOptions: {
+					show: {
+						resource: [authenticationUserCredsResource],
+					},
+				},
+				noDataExpression: true,
+			} as INodeProperties,
+			// Info notice for v45+ operations
+			{
+				displayName:
+					'This operation requires NetSapiens API v45+. It will not work on older server versions.',
+				name: 'v45Notice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: operations
+							.filter(
+								(o) =>
+									(operationOverrides[o.id]?.minApiVersion ?? o.minApiVersion) !== undefined,
+							)
+							.map((o) => o.id),
+					},
+				},
+			} as INodeProperties,
 			{
 				displayName: 'Method',
 				name: 'rawMethod',
@@ -4575,6 +4665,82 @@ export class NetSapiens implements INodeType {
 				}
 
 				if (
+					resource === authenticationJwtResource &&
+					operationId === validateJwtFormatOperationId
+				) {
+					const providedJwt = String(
+						this.getNodeParameter(validateJwtFormatTokenParamName, itemIndex, ''),
+					).trim();
+					const normalizedJwt = providedJwt.replace(/^Bearer\s+/i, '').trim();
+
+					if (!normalizedJwt) {
+						throw new NodeOperationError(
+							this.getNode(),
+							'JSON Web Token (ns_t) is required',
+							{ itemIndex },
+						);
+					}
+
+					const parts = normalizedJwt.split('.');
+					if (parts.length !== 3) {
+						returnData.push({
+							json: {
+								jwtValidationCheckedAt: null,
+								jwtIsValidFormat: false,
+								jwtIsUnexpired: false,
+								jwtFormatError: `Expected 3 JWT segments (header.payload.signature), got ${parts.length}`,
+							} as IDataObject,
+							pairedItem: { item: itemIndex },
+						});
+						continue;
+					}
+
+					let payload: IDataObject;
+					try {
+						// Base64url decode: replace URL-safe chars, add padding
+						const base64 = parts[1]
+							.replace(/-/g, '+')
+							.replace(/_/g, '/');
+						const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+						const decoded = Buffer.from(padded, 'base64').toString('utf8');
+						payload = JSON.parse(decoded) as IDataObject;
+					} catch {
+						returnData.push({
+							json: {
+								jwtValidationCheckedAt: null,
+								jwtIsValidFormat: false,
+								jwtIsUnexpired: false,
+								jwtFormatError: 'Failed to decode JWT payload (invalid base64 or JSON)',
+							} as IDataObject,
+							pairedItem: { item: itemIndex },
+						});
+						continue;
+					}
+
+					// Build output with jwt* fields first, then decoded payload
+					const expSeconds = toEpochSeconds(payload.exp);
+					const nowSeconds = Math.trunc(Date.now() / 1000);
+					const expiresInSeconds =
+						expSeconds !== undefined ? expSeconds - nowSeconds : undefined;
+					const isUnexpired =
+						expiresInSeconds !== undefined ? expiresInSeconds > 0 : false;
+
+					const output: IDataObject = {
+						jwtValidationCheckedAt: null,
+						jwtIsValidFormat: true,
+						jwtIsUnexpired: isUnexpired,
+						...(expSeconds !== undefined && {
+							jwtExpiresAt: new Date(expSeconds * 1000).toISOString(),
+							jwtExpiresInSeconds: expiresInSeconds,
+						}),
+						...payload,
+					};
+
+					returnData.push({ json: output, pairedItem: { item: itemIndex } });
+					continue;
+				}
+
+				if (
 					resource === authenticationUserCredsResource &&
 					operationId === validateUserCredsOperationId
 				) {
@@ -4651,18 +4817,31 @@ export class NetSapiens implements INodeType {
 					throw new NodeOperationError(this.getNode(), `Unknown operation: ${operationId}`, { itemIndex });
 				}
 
-				if (operation.id === 'GetAuditlog') {
-					const shouldRefresh = Boolean(this.getNodeParameter('refreshOptions', itemIndex, false));
-					const apiVersion = await getServerApiVersion(this, auth, baseUrl, { refresh: shouldRefresh });
-					if (typeof apiVersion.major === 'number' && apiVersion.major < 45) {
-						const raw = apiVersion.raw ? ` (${apiVersion.raw})` : '';
+				// Generalized pre-flight version check for operations requiring a minimum API version
+				const operationMinVersion =
+					operationOverrides[operation.id]?.minApiVersion ?? operation.minApiVersion;
+				if (operationMinVersion) {
+					const shouldRefresh = Boolean(
+						this.getNodeParameter('refreshOptions', itemIndex, false),
+					);
+					const apiVersion = await getServerApiVersion(this, auth, baseUrl, {
+						refresh: shouldRefresh,
+					});
+					if (
+						typeof apiVersion.major === 'number' &&
+						apiVersion.major < operationMinVersion
+					) {
+						const raw = apiVersion.raw ? ` (detected: ${apiVersion.raw})` : '';
+						const opLabel =
+							operationOverrides[operation.id]?.displayName ??
+							operation.summary ??
+							operation.id;
 						throw new NodeOperationError(
 							this.getNode(),
-							`Audit Log is not supported by this NetSapiens server (API version < 45${raw}).`,
+							`${opLabel} requires NetSapiens API v${operationMinVersion}+${raw}`,
 							{
 								itemIndex,
-								description:
-									'Your server does not implement the Audit Log endpoint used by this operation. Upgrade the server/API to version 45+ or remove this operation from the workflow.',
+								description: `This endpoint is not available on your server. Upgrade to NetSapiens API version ${operationMinVersion}+ or use a different operation.`,
 							},
 						);
 					}
@@ -5448,24 +5627,6 @@ export class NetSapiens implements INodeType {
 				const isNoRouteFound =
 					/no\s+route\s+found\s*\[92\]/i.test(errorText) || /no\s+route\s+found/i.test(errorText);
 
-				if (operationId === 'GetAuditlog') {
-					const shouldRefresh = Boolean(this.getNodeParameter('refreshOptions', itemIndex, false));
-					const apiVersion = await getServerApiVersion(this, auth, baseUrl, { refresh: shouldRefresh });
-					if (isNoRouteFound) {
-						const versionText = apiVersion.raw
-							? ` Detected API version: ${apiVersion.raw}.`
-							: ' Unable to detect API version from /version.';
-						throw new NodeOperationError(
-							this.getNode(),
-							'Audit Log is not supported by this NetSapiens server.',
-							{
-								itemIndex,
-								description: `The server returned "No Route Found" for the Audit Log endpoint. This operation requires NetSapiens API version 45+.${versionText}`,
-							},
-						);
-					}
-				}
-
 				if (isNoRouteFound) {
 					const shouldRefresh = Boolean(this.getNodeParameter('refreshOptions', itemIndex, false));
 					const apiVersion = await getServerApiVersion(this, auth, baseUrl, { refresh: shouldRefresh });
@@ -5475,14 +5636,21 @@ export class NetSapiens implements INodeType {
 
 					const operationDetails = operationMap[operationId as keyof typeof operationMap];
 					const method = operationDetails ? operationDetails.method : operationId;
-					const path = operationDetails ? operationDetails.path : '';
+					const opPath = operationDetails ? operationDetails.path : '';
+
+					const minVersion =
+						operationOverrides[operationId]?.minApiVersion ??
+						operationDetails?.minApiVersion;
+					const minVersionNote = minVersion
+						? ` This endpoint requires API version ${minVersion}+.`
+						: '';
 
 					throw new NodeOperationError(
 						this.getNode(),
 						'This NetSapiens server does not support the requested endpoint.',
 						{
 							itemIndex,
-							description: `The server returned "No Route Found [92]" for ${method} ${path}.${versionText}`,
+							description: `The server returned "No Route Found [92]" for ${method} ${opPath}.${versionText}${minVersionNote}`,
 						},
 					);
 				}

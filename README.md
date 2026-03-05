@@ -58,9 +58,13 @@ The node then renders fields for the endpoint parameters.
 
 In addition, the node includes a **Raw -> Request** operation that lets you call arbitrary endpoints directly when you need full control.
 
-The node also includes a custom **Authentication/JWT (JSON Web Token) -> Validate JWT** operation. This operation accepts a token input (`JSON Web Token (ns_t)`) and validates it against `GET /jwt` using that provided token for the request.
+The node also includes custom **Authentication/JWT (JSON Web Token)** operations:
+- **Validate JWT** — accepts a token input and validates it against `GET /jwt` using that provided token for the request.
+- **Validate JWT Format** — decodes and validates a JWT token locally without server contact, outputting decoded payload fields, format validation, and expiration status.
 
-The node also includes a custom **Authentication/User Credentials -> Validate** operation. This operation validates a username and password against the NetSapiens OAuth2 token endpoint, returning a structured success or failure result without using the token for subsequent API calls.
+The node also includes a custom **Authentication/User Credentials -> Validate** operation. This operation validates a username and password against the NetSapiens OAuth2 token endpoint, returning a structured success or failure result without using the token for subsequent API calls. When using API Key credentials, you must provide OAuth2 Client ID and Client Secret separately.
+
+Operations that require NetSapiens API v45+ are tagged with "(v45+)" in the dropdown and include a pre-flight version check that prevents calling unsupported endpoints on older servers.
 
 NetSapiens provides the [API JSON Schema](https://docs.ns-api.com/docs/download-full-api-json-schema-file) as part of their documentation, which this node uses to generate the basic node interface. The node also implements a number of overrides to handle NetSapiens-specific details and add additional functionality and affordances.
 
@@ -110,7 +114,7 @@ NetSapiens also provides an [MCP server](https://docs.ns-api.com/v45.0/docs/mcp-
 - **Tested with**: Local development via `n8n-node dev`
 - **Tested with**: NetSapiens Version 44.3.2
 
-**Note:** The OpenAPI spec used to implement this node is not from a well-defined version, though it's older than 45.0 and likely is for a version of 44.x when API v2 was introduced. The 45.0 spec provided by NetSapiens has a substantial numer of changes and additions and this node may not be fully compatible with it until it's updated in the future (however, you can use the Raw API Request option to make calls to endpoints that are not yet implemented).
+**Note:** The node uses the NetSapiens v45.0 OpenAPI spec and automatically identifies operations that are only available on v45+ servers. These operations are tagged with "(v45+)" in the dropdown and include a pre-flight version check. Operations from the original v2 spec work on both 44.x and 45.x servers. You can also use the Raw API Request option to call endpoints not yet implemented as dedicated operations.
 
 ## Usage
 

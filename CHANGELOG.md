@@ -4,27 +4,37 @@ All notable changes to the n8n-nodes-netsapiens project will be documented in th
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.2.4] - 2026-03-04
+## [0.2.4] - 2026-03-05
 
 ### Added
 
 - Added **OAuth2 (Password Grant)** authentication support alongside the existing API Key auth, both within a single **NetSapiens API** credential via an **Authentication Method** selector.
 - Added automatic token caching and refresh for OAuth2, with 60-second expiry buffer and automatic retry on 401.
 - Added v2 token endpoint with automatic fallback to legacy `/ns-api/oauth2/token/` endpoint on 404.
-- Added **Validate User Credentials** operation (`Authentication/User Credentials -> Validate`) that validates a username/password against the OAuth2 token endpoint, returning structured success or failure results.
+- Added **Validate User Credentials** operation (`Authentication/User Credentials -> Validate`) that validates a username/password against the OAuth2 token endpoint, returning structured success or failure results. Includes an info notice explaining OAuth2 client credential requirements per auth type.
+- Added **Validate JWT Format** operation (`Authentication/JWT -> Validate JWT Format`) that decodes and validates a JWT token locally without server contact — outputs decoded payload fields, format validation, and expiration check using local timestamps.
 - Added domain and user dropdown fallback for restricted OAuth2 users — automatically falls back to `/domains/~` and `/domains/~/users/~` when the user lacks permission to list all domains or users.
 - Added `continueOnFail()` support for graceful per-item error handling.
 - Added `pairedItem` tracking on all output items for proper n8n data flow tracing.
+- Added **v45+ operation tagging** — operations only available on NetSapiens API v45+ are now tagged with "(v45+)" in the dropdown, with "Requires NetSapiens API v45+" description subtext and an info notice when selected.
+- Added **generalized pre-flight version check** — any operation with a minimum API version requirement now checks the server version before making the request and throws a clear error if the server is too old, replacing the previous Audit Log-specific check.
+- Added `minApiVersion` field to `GeneratedOpenApiOperation` type and `OperationOverride` type for automated and manual version tagging.
+- Added enriched `action` text on operation options using the OpenAPI spec `summary` field for better AI agent tool selection.
+- Added OpenAPI spec `description` as dropdown subtext for operations that have descriptions.
 
 ### Changed
 
 - Consolidated authentication into a single credential type with an auth type toggle inside the credential dialog, avoiding the performance-degrading pattern of multiple credential types with `displayOptions` on nodes with large property counts.
 - Credential-aware cache keys for domain/user/site dropdowns — switching between credentials or auth types now correctly refreshes cached data.
 - Improved OAuth2 error messages with actionable guidance (e.g., 401 suggests checking credentials, 403 suggests checking user scope/role).
+- Resource dropdown is now sorted alphabetically (with Raw at the top), fixing the issue where custom resources appeared at the bottom.
+- Enhanced "No Route Found [92]" error handler to include the minimum API version note when the operation has a version requirement.
+- Code generator (`tools/generate-openapi.js`) now compares v45.0 spec against the original v2.3.1 spec to automatically identify v45-only endpoints (199 of 482 operations).
 
 ### Fixed
 
 - Fixed credential test validation for OAuth2 — test request now self-sufficiently POSTs to the tokens endpoint instead of depending on `preAuthentication`, which may not run reliably in dev mode.
+- Fixed missing operation dropdown for the `Authentication/User Credentials` resource — the resource was registered but had no corresponding operation property, causing "Could not get parameter" errors.
 
 ## [0.2.3] - 2026-03-02
 

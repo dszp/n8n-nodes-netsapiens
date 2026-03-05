@@ -14,7 +14,7 @@ Nothing in this file is a commitment. Items may change, be re-prioritized, or be
 
 ## Versioning / compatibility strategy
 
-- Decide whether to introduce n8n node versioning to support both NetSapiens 44.x (current stable) and 45.x+ (new OpenAPI spec), keeping existing workflows stable while enabling newer endpoints.
+- ~~Decide whether to introduce n8n node versioning to support both NetSapiens 44.x (current stable) and 45.x+ (new OpenAPI spec), keeping existing workflows stable while enabling newer endpoints.~~ **Addressed** — v45-only operations are now auto-detected and tagged with "(v45+)" in the UI, with pre-flight version checks at runtime. No node versioning needed.
 
 ## Feature ideas
 
@@ -26,4 +26,4 @@ Nothing in this file is a commitment. Items may change, be re-prioritized, or be
 
  - Auto Attendant -> Read Specific Auto Attendant: Filter the list of users so only auto-attendants are displayed.
  - Auto Attendant -> Read Specific Auto Attendant: Pull possible options for the Prompt field from the selected auto-attendant once selected, rather than requiring entry. Ensure the Prompt field is marked as required.
- - Add JWT format validation in addition to JWT server validation to provide an easy choice to verify a JWT token's basic format and existence (quickly with local code) or with the existing server-based validation check. The server check provides assurance of user validity, but a validation check would be a faster local method of validation for less security-relevant user permission confirmations, while keeping compatible outputs between the two for workflow usage.
+ - ~~Add JWT format validation in addition to JWT server validation to provide an easy choice to verify a JWT token's basic format and existence (quickly with local code) or with the existing server-based validation check. The server check provides assurance of user validity, but a validation check would be a faster local method of validation for less security-relevant user permission confirmations, while keeping compatible outputs between the two for workflow usage.~~ **Done** — Validate JWT Format operation added in version 0.2.4.
