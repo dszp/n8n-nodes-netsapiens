@@ -12,6 +12,8 @@ NetSapiens is a Voice over IP (VoIP) phone switch software provider that provide
 		- [Self-Hosted n8n](#self-hosted-n8n)
 	- [Operations](#operations)
 	- [Credentials](#credentials)
+		- [API Key (Bearer Token) — default](#api-key-bearer-token--default)
+		- [OAuth2 (Password Grant)](#oauth2-password-grant)
 	- [Compatibility](#compatibility)
 	- [Usage](#usage)
 		- [Basic usage](#basic-usage)
@@ -56,7 +58,13 @@ The node then renders fields for the endpoint parameters.
 
 In addition, the node includes a **Raw -> Request** operation that lets you call arbitrary endpoints directly when you need full control.
 
-The node also includes a custom **Authentication/JWT (JSON Web Token) -> Validate JWT** operation. This operation accepts a token input (`JSON Web Token (ns_t)`) and validates it against `GET /jwt` using that provided token for the request.
+The node also includes custom **Authentication/JWT (JSON Web Token)** operations:
+- **Validate JWT** — accepts a token input and validates it against `GET /jwt` using that provided token for the request.
+- **Validate JWT Format** — decodes and validates a JWT token locally without server contact, outputting decoded payload fields, format validation, and expiration status.
+
+The node also includes a custom **Authentication/User Credentials -> Validate** operation. This operation validates a username and password against the NetSapiens OAuth2 token endpoint, returning a structured success or failure result without using the token for subsequent API calls. When using API Key credentials, you must provide OAuth2 Client ID and Client Secret separately.
+
+Operations that require NetSapiens API v45+ are tagged with "(v45+)" in the dropdown and include a pre-flight version check that prevents calling unsupported endpoints on older servers.
 
 NetSapiens provides the [API JSON Schema](https://docs.ns-api.com/docs/download-full-api-json-schema-file) as part of their documentation, which this node uses to generate the basic node interface. The node also implements a number of overrides to handle NetSapiens-specific details and add additional functionality and affordances.
 
@@ -64,21 +72,41 @@ Read operations are substantially better tested and usable than write calls, whi
 
 ## Credentials
 
-Create a new **NetSapiens API** credential. This node is designed for [API Keys](https://docs.ns-api.com/docs/api-keys) (bearer tokens) as the default credential auth model.
+This node supports two authentication methods within a single **NetSapiens API** credential, selectable via the **Authentication Method** dropdown:
 
-OAuth Access Token and refresh-token flows are not currently supported in this node. JWT credential-login flows are also not supported as node credentials, though the node now includes a dedicated **Validate JWT** operation that accepts a JWT value as input for one request.
+### API Key (Bearer Token) — default
 
-Only NetSapiens API version 2 supports API keys, and this node only connects to API version 2 endpoints (though the API key would be valid for API version 1 as well, for versions of NetSapiens that support API version 2 credentials).
+Uses [API Keys](https://docs.ns-api.com/docs/api-keys) (bearer tokens) as the authentication method.
 
 - **Server**: Your NetSapiens API hostname (without protocol)
 - **Bearer Token**: An API key (bearer token) used for API requests
-- **Base URL** (optional): Override the full base URL. If empty, the node defaults to `https://{server}/ns-api/v2`.
+- **Base URL Override** (optional): Override the full base URL. If empty, the node defaults to `https://{server}/ns-api/v2`.
 
 Obtain an API key from your NetSapiens provider if you are a Reseller user, or obtain the API key directly from your NetSapiens instance if you have administrator access.
+
+Only NetSapiens API version 2 supports API keys, and this node only connects to API version 2 endpoints (though the API key would be valid for API version 1 as well, for versions of NetSapiens that support API version 2 credentials).
+
+### OAuth2 (Password Grant)
+
+Uses the OAuth2 password grant flow (`POST /ns-api/v2/tokens`) to obtain an access token using client credentials and a username/password.
+
+- **Server**: Your NetSapiens API hostname (without protocol)
+- **Client ID**: OAuth2 client identifier. Format varies by installation (e.g., `86716.apiscripts`, `teammateapi.uptimetm`).
+- **Client Secret**: OAuth2 client secret
+- **Username**: User login for OAuth2 authentication. Typically `user@domain` or `user@0000.territory.service`, but format may vary by installation.
+- **Password**: Password for the OAuth2 user
+
+The node automatically manages token caching and refresh. Tokens are cached and reused until they expire (with a 60-second buffer), at which point a new token is fetched automatically. If the v2 token endpoint is not available, the node falls back to the legacy `/ns-api/oauth2/token/` endpoint.
+
+OAuth2 credentials support restricted users — domain and user dropdowns automatically fall back to the user's own domain/user when the account lacks permission to list all domains or users.
+
+JWT credential-login flows are not supported as node credentials, though the node includes a dedicated **Validate JWT** operation that accepts a JWT value as input for one request.
 
 NetSapiens, as of this writing, runs a [Developer Sandbox](https://docs.ns-api.com/docs/developer-sandbox-ns-apicom) where you can test API usage if you would like.
 
 NetSapiens provides an [API v1 Migration to v2 reference](https://docs.ns-api.com/docs/v1-migration-to-v2) to review so you can determine differences between the API versions if you're familiar with version 1.
+
+NetSapiens also provides an [MCP server](https://docs.ns-api.com/v45.0/docs/mcp-1) that you can add to your favorite AI tool (it's unauthenticated and open, only requiring a URL) that lets AI gather API documentation in real-time to build queries and workflows.
 
 ## Compatibility
 
@@ -86,7 +114,7 @@ NetSapiens provides an [API v1 Migration to v2 reference](https://docs.ns-api.co
 - **Tested with**: Local development via `n8n-node dev`
 - **Tested with**: NetSapiens Version 44.3.2
 
-**Note:** The OpenAPI spec used to implement this node is not from a well-defined version, though it's older than 45.0 and likely is for a version of 44.x when API v2 was introduced. The 45.0 spec provided by NetSapiens has a substantial numer of changes and additions and this node may not be fully compatible with it until it's updated in the future (however, you can use the Raw API Request option to make calls to endpoints that are not yet implemented).
+**Note:** The node uses the NetSapiens v45.0 OpenAPI spec and automatically identifies operations that are only available on v45+ servers. These operations are tagged with "(v45+)" in the dropdown and include a pre-flight version check. Operations from the original v2 spec work on both 44.x and 45.x servers. You can also use the Raw API Request option to call endpoints not yet implemented as dedicated operations.
 
 ## Usage
 

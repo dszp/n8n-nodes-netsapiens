@@ -10,6 +10,7 @@ export type OperationOverride = {
 	hidden?: boolean;
 	resource?: string;
 	order?: number;
+	minApiVersion?: number;
 };
 
 export const resourceOverrides: Record<string, ResourceOverride> = {

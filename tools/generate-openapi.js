@@ -29,6 +29,7 @@ const path = require('path');
  *  description?: string;
  *  parameters: GeneratedOpenApiParameter[];
  *  hasRequestBody: boolean;
+ *  minApiVersion?: number;
  * }} GeneratedOpenApiOperation
  */
 
@@ -166,6 +167,25 @@ if (!fs.existsSync(specPath)) {
 
 const spec = JSON.parse(fs.readFileSync(specPath, 'utf8'));
 
+// Load the original (pre-v45) spec to identify v45-only endpoints
+const originalSpecPath = path.join(packageRoot, 'openapi', 'NetSapiens.v2.3.1.0.openapi.json');
+const originalSpec = fs.existsSync(originalSpecPath)
+	? JSON.parse(fs.readFileSync(originalSpecPath, 'utf8'))
+	: null;
+
+// Build set of "METHOD /normalized/path" from original spec
+const originalEndpoints = new Set();
+if (originalSpec?.paths) {
+	for (const [pathKey, pathItem] of Object.entries(originalSpec.paths)) {
+		const np = normalizePath(pathKey);
+		for (const methodKey of Object.keys(pathItem)) {
+			if (isHttpMethod(methodKey)) {
+				originalEndpoints.add(`${toHttpMethod(methodKey)} ${np}`);
+			}
+		}
+	}
+}
+
 const usedIds = new Map();
 /** @type {GeneratedOpenApiOperation[]} */
 const operations = [];
@@ -218,6 +238,10 @@ for (const [pathKey, pathItem] of Object.entries(paths ?? {})) {
 
 		const hasRequestBody = Boolean(operation.requestBody);
 
+		const endpointKey = `${opMethod} ${normalizedPath}`;
+		const minApiVersion =
+			originalEndpoints.size > 0 && !originalEndpoints.has(endpointKey) ? 45 : undefined;
+
 		operations.push({
 			id: uniqueId,
 			method: opMethod,
@@ -227,6 +251,7 @@ for (const [pathKey, pathItem] of Object.entries(paths ?? {})) {
 			description: operation.description,
 			parameters: dedupeParameters(parameters),
 			hasRequestBody,
+			...(minApiVersion !== undefined && { minApiVersion }),
 		});
 	}
 }
@@ -260,6 +285,7 @@ const output =
 	`  description?: string;\n` +
 	`  parameters: GeneratedOpenApiParameter[];\n` +
 	`  hasRequestBody: boolean;\n` +
+	`  minApiVersion?: number;\n` +
 	`};\n` +
 	`\n` +
 	`export const resources: readonly string[] = ${toTs(resources)};\n` +

@@ -19,6 +19,7 @@ export type GeneratedOpenApiOperation = {
   description?: string;
   parameters: GeneratedOpenApiParameter[];
   hasRequestBody: boolean;
+  minApiVersion?: number;
 };
 
 export const resources: readonly string[] = [
@@ -117,7 +118,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "Read API Version ",
     "description": "",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PostAuthCode",
@@ -135,7 +137,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PostTokens",
@@ -175,7 +178,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "SSO Enroll",
     "description": "",
     "parameters": [],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "ReadMyApikey",
@@ -400,7 +404,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "CreateSubscriptionDomain",
@@ -417,7 +422,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "ReadSubscription",
@@ -495,7 +501,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteSubscriptionDomain",
@@ -519,7 +526,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetResellers",
@@ -549,7 +557,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "Count Resellers",
     "description": "",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetResellersByCount",
@@ -567,7 +576,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "UpdateReseller",
@@ -878,7 +888,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetPhonenumbers",
@@ -1163,7 +1174,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDevices",
@@ -1238,7 +1250,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetResellersByDevicesCount",
@@ -1268,7 +1281,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "CountDevices",
@@ -1303,7 +1317,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByDevicesByCount",
@@ -1339,7 +1354,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "UpdateDevice",
@@ -1446,7 +1462,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetSupportedModels",
@@ -1584,7 +1601,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "Count Mac Addresses",
     "description": "",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByPhones",
@@ -1706,7 +1724,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsBySitesList",
@@ -1723,7 +1742,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsBySites",
@@ -1774,7 +1794,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PutDomainsBySitesBy",
@@ -1942,7 +1963,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "ReadAgents",
@@ -2011,7 +2033,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "ReadAgentsDomain",
@@ -2279,7 +2302,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": "When used in path the callqueue value will link to a extension id for a preconfigured callqueue."
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByStatisticsCallqueuesBy",
@@ -2335,7 +2359,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByStatisticsCallqueuesAggregate",
@@ -2385,7 +2410,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByStatisticsQueuePerQueue",
@@ -2435,7 +2461,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByStatisticsAgent",
@@ -2485,7 +2512,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByStatisticsAgentCallqueuesBy",
@@ -2541,7 +2569,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByStatisticsAgentBy",
@@ -2591,7 +2620,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByStatisticsDNIS",
@@ -2634,7 +2664,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByStatisticsDNISCallqueuesBy",
@@ -2683,7 +2714,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByStatisticsAgentLog",
@@ -2733,7 +2765,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "SendEmail",
@@ -2785,7 +2818,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": "This is the end of the time window for a given query. The format is based on RFC3339 but also will support additonal params for use in providing a timezone which will allow the API to give the correct range for a given set of data and will be formated in respone using the same format. Allowed values same as datetime-start."
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByCallqueuereportAbandonedBy",
@@ -2820,7 +2854,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": "This is the end of the time window for a given query. The format is based on RFC3339 but also will support additonal params for use in providing a timezone which will allow the API to give the correct range for a given set of data and will be formated in respone using the same format. Allowed values same as datetime-start."
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByDispositions",
@@ -2837,7 +2872,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByDispositions",
@@ -2854,7 +2890,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByUsersByAnswerrules",
@@ -2923,7 +2960,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsUsersAnswerrules",
@@ -3063,7 +3101,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByNumberFilters",
@@ -3080,7 +3119,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteDomainsByNumberFilters",
@@ -3097,7 +3137,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByUsersBynumberFilters",
@@ -3120,7 +3161,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByUsersByNumberFilters",
@@ -3143,7 +3185,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteDomainsByUsersByNumberFilters",
@@ -3166,7 +3209,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByAutoattendants",
@@ -3290,7 +3334,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "ReadVoicemails",
@@ -3350,7 +3395,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "ReadVoicemail",
@@ -3567,7 +3613,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "ReadGreeting",
@@ -3814,7 +3861,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "UpdateMohDomainTTS",
@@ -4013,7 +4061,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "CreateMohUserBase64",
@@ -4230,7 +4279,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "UpdateMsgDomainFileUpload",
@@ -4347,7 +4397,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "UpdateMsgUserFileUpload",
@@ -4894,7 +4945,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetResellersByScheduleCount",
@@ -4912,7 +4964,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByScheduleByCount",
@@ -4936,7 +4989,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetSipFlow",
@@ -5147,7 +5201,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByCalls",
@@ -5317,7 +5372,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PatchDomainsByUsersByCallsByTransfer",
@@ -5467,7 +5523,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PostCallsReport",
@@ -5477,7 +5534,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "Report Active Calls",
     "description": "",
     "parameters": [],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByContacts",
@@ -6234,7 +6292,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "ReadDialrules",
@@ -6306,7 +6365,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "ReadDialrule",
@@ -6409,7 +6469,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "Read Dialplans",
     "description": "",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PostDialplans",
@@ -6419,7 +6480,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "Create Dialplan Global",
     "description": "",
     "parameters": [],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByDialplans",
@@ -6436,7 +6498,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PutDomainsByDialplansBy",
@@ -6460,7 +6523,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteDomainsByDialplansBy",
@@ -6484,7 +6548,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDialpolicy",
@@ -6494,7 +6559,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "Read Policies",
     "description": "",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PostDialpolicy",
@@ -6504,7 +6570,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "Create Dialpolicy Table",
     "description": "",
     "parameters": [],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "GetDialpolicyBy",
@@ -6522,7 +6589,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PutDialpolicyBy",
@@ -6540,7 +6608,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteDialpolicyBy",
@@ -6558,7 +6627,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByDialpolicyBy",
@@ -6582,7 +6652,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PutDomainsByDialpolicyBy",
@@ -6606,7 +6677,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteDomainsByDialpolicyBy",
@@ -6630,7 +6702,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDialpolicyByPermission",
@@ -6648,7 +6721,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "CreatePermission",
@@ -6666,7 +6740,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByDialpolicyByPermission",
@@ -6690,7 +6765,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "CreatePermissionDomain",
@@ -6714,7 +6790,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "ReadPermission",
@@ -6739,7 +6816,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "UpdatePermission",
@@ -6764,7 +6842,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeletePermission",
@@ -6789,7 +6868,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "ReadPermissionDomain",
@@ -6820,7 +6900,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "UpdatePermissionDomain",
@@ -6851,7 +6932,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeletePermissionDomain",
@@ -6882,7 +6964,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetMessageSessionsForDomain",
@@ -6905,7 +6988,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "startSession",
@@ -6928,7 +7012,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "GetMessageSessionsForUser",
@@ -6987,7 +7072,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "updateMessageSessionParticipants",
@@ -7545,7 +7631,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetConnections",
@@ -7875,7 +7962,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PostRoutesByRoutecon",
@@ -7893,7 +7981,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "GetRouteconCount",
@@ -7929,7 +8018,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteRoute",
@@ -7947,7 +8037,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PutRoutesByRouteconBy",
@@ -7972,7 +8063,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteRouteCon",
@@ -7997,7 +8089,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByUsersByMeetingsByInstanceByLog",
@@ -8081,7 +8174,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "Read Iotum Video Domain Resellers",
     "description": "Read a Iotum Company (domain)",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByUsersByVideo",
@@ -8104,7 +8198,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByVideoHosts",
@@ -8121,7 +8216,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByUsersByVideoConference",
@@ -8144,7 +8240,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByUsersByVideoConference",
@@ -8167,7 +8264,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByUsersByVideoContacts",
@@ -8190,7 +8288,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByVideo",
@@ -8207,7 +8306,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PutDomainsByVideo",
@@ -8224,7 +8324,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByVideo",
@@ -8241,7 +8342,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteDomainsByVideo",
@@ -8258,7 +8360,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByVideoProducts",
@@ -8275,7 +8378,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByVideoAvailableproducts",
@@ -8292,7 +8396,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByUsersByHost",
@@ -8315,7 +8420,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PutDomainsByUsersByHost",
@@ -8338,7 +8444,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteDomainsByUsersByHost",
@@ -8361,7 +8468,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByUsersByHostContacts",
@@ -8384,7 +8492,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByVideoSubscriptionBy",
@@ -8408,7 +8517,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteDomainsByVideoSubscriptionBy",
@@ -8432,7 +8542,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PutDomainsByVideoSubscriptions",
@@ -8449,7 +8560,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByUsersByMeetingsBy",
@@ -8801,7 +8913,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "Update a NS API Configuration",
     "description": "",
     "parameters": [],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "CreateNsApiConfiguration",
@@ -8811,7 +8924,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "Create a NS API Configuration",
     "description": "Create a configuration for API or Portal nsconfig file",
     "parameters": [],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "ReadAllNsApiConfigurations",
@@ -8843,7 +8957,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "boolean"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteNsApiConfiguration",
@@ -8853,7 +8968,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "Delete a NS API Configuration Copy",
     "description": "Delete a configuration for API or Portal nsconfig file",
     "parameters": [],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "ReadSpecificConfiguration",
@@ -9024,7 +9140,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "boolean"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetConfigDefinitions",
@@ -9419,7 +9536,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PutDomainsByTimeframesBy",
@@ -9443,7 +9561,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteDomainsByTimeframesBy",
@@ -9467,7 +9586,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByTimeframesBy",
@@ -9491,7 +9611,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PutDomainsByTimeframesBy_2",
@@ -9515,7 +9636,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByTimeframesBy_2",
@@ -9539,7 +9661,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteDomainsByTimeframesBy_2",
@@ -9563,7 +9686,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByTimeframes_3",
@@ -9604,7 +9728,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByTimeframesBy_3",
@@ -9628,7 +9753,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteDomainsByTimeframesBy_3",
@@ -9652,7 +9778,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByTimeframes_4",
@@ -9693,7 +9820,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteDomainsByTimeframesBy_4",
@@ -9717,7 +9845,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PutDomainsByTimeframesBy_5",
@@ -9741,7 +9870,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByTimeframes_5",
@@ -9782,7 +9912,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PutDomainsByTimeframesBy_7",
@@ -9806,7 +9937,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PutDomainsByTimeframesBy_8",
@@ -9830,7 +9962,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByUsersByTimeframes",
@@ -9929,7 +10062,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PutDomainsByUsersByTimeframesBy",
@@ -9959,7 +10093,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteDomainsByUsersByTimeframesBy",
@@ -9989,7 +10124,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByUsersByTimeframesBy",
@@ -10019,7 +10155,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PutDomainsByUsersByTimeframesBy_2",
@@ -10049,7 +10186,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByUsersByTimeframesBy_2",
@@ -10079,7 +10217,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteDomainsByUsersByTimeframesBy_2",
@@ -10109,7 +10248,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByUsersByTimeframes_3",
@@ -10162,7 +10302,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByUsersByTimeframesBy_3",
@@ -10192,7 +10333,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteDomainsByUsersByTimeframesBy_3",
@@ -10222,7 +10364,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByUsersByTimeframes_4",
@@ -10275,7 +10418,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteDomainsByUsersByTimeframesBy_4",
@@ -10305,7 +10449,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PutDomainsByUsersByTimeframesBy_5",
@@ -10335,7 +10480,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByUsersByTimeframes_5",
@@ -10388,7 +10534,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PutDomainsByUsersByTimeframesBy_7",
@@ -10418,7 +10565,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "Delete",
@@ -10428,7 +10576,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "Delete All Timeframes for User",
     "description": "",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PutDomainsByUsersByTimeframesBy_8",
@@ -10458,7 +10607,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "GetHolidaysCountries",
@@ -10468,7 +10618,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "Read List of Supported Countries",
     "description": "Retrieve a list of supported country codes to be used when reading holiday information.",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetHolidaysRegions",
@@ -10478,7 +10629,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "Read List of Supported Regions",
     "description": "Retrieve a list of supported region codes by country, to be used when reading holiday information.",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetHolidaysByBy",
@@ -10510,7 +10662,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "GetHolidaysByByBy",
@@ -10549,7 +10702,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetFirebase",
@@ -10559,7 +10713,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "Read firebase service accounts",
     "description": "",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PostFirebase",
@@ -10569,7 +10724,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "Add firebase service account",
     "description": "",
     "parameters": [],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "GetCertificates",
@@ -10579,7 +10735,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "Read SSL certificates for CertManager",
     "description": "",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PostCertificates",
@@ -10589,7 +10746,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "Create SSL certificate for CertManager",
     "description": "",
     "parameters": [],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "GetCertificatesBy",
@@ -10607,7 +10765,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PutCertificatesBy",
@@ -10625,7 +10784,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteCertificatesBy",
@@ -10643,7 +10803,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetCodeBy",
@@ -10661,7 +10822,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetInsightBy",
@@ -10720,7 +10882,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByConferences",
@@ -10737,7 +10900,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByConferences",
@@ -10754,7 +10918,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByConferencesBy",
@@ -10778,7 +10943,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PutDomainsByConferencesBy",
@@ -10802,7 +10968,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteDomainsByConferencesBy",
@@ -10826,7 +10993,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByConferencesCount",
@@ -10843,7 +11011,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByConferencesByCdr",
@@ -10888,7 +11057,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByConferencesByParticipants",
@@ -10912,7 +11082,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByConferencesByParticipants",
@@ -10936,7 +11107,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "PutDomainsByConferencesByParticipantsBy",
@@ -10967,7 +11139,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteDomainsByConferencesByParticipantsBy",
@@ -10998,7 +11171,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "number"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByPhonetemplates",
@@ -11015,7 +11189,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByPhonetemplates",
@@ -11032,7 +11207,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByPhonetemplatesBy",
@@ -11056,7 +11232,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PutDomainsByPhonetemplatesBy",
@@ -11080,7 +11257,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteDomainsByPhonetemplatesBy",
@@ -11104,7 +11282,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDeviceprofiles",
@@ -11114,7 +11293,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "Read Device Profiles",
     "description": "",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDeviceprofilesCount",
@@ -11124,7 +11304,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
     "summary": "Count Device Profiles",
     "description": "",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDeviceprofilesByBy",
@@ -11149,7 +11330,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByPhoneconfigurationCount",
@@ -11166,7 +11348,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByPhoneconfigurationBy",
@@ -11190,7 +11373,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PutDomainsByPhoneconfigurationBy",
@@ -11214,7 +11398,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "DeleteDomainsByPhoneconfigurationBy",
@@ -11238,7 +11423,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "PostDomainsByPhoneconfiguration",
@@ -11255,7 +11441,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByChartsByCount",
@@ -11286,7 +11473,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByChartsByList",
@@ -11310,7 +11498,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "number"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByUsersByDashboardsCount",
@@ -11340,7 +11529,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "number"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByUsersByDashboardsList",
@@ -11370,7 +11560,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "number"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByQuotas",
@@ -11387,7 +11578,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetResellersByQuotas",
@@ -11405,7 +11597,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByQuotasCount",
@@ -11422,7 +11615,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetResellersByQuotasCount",
@@ -11440,7 +11634,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByDepartmentsList",
@@ -11457,7 +11652,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByPresenceList",
@@ -11494,7 +11690,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetDomainsByDepartmentsByPresenceList",
@@ -11538,7 +11735,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetAuditlog",
@@ -11617,7 +11815,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   {
     "id": "GetAccesslog",
@@ -11696,7 +11895,8 @@ export const operations: readonly GeneratedOpenApiOperation[] = [
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   }
 ];
 
@@ -11709,7 +11909,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "Read API Version ",
     "description": "",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PostAuthCode": {
     "id": "PostAuthCode",
@@ -11727,7 +11928,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PostTokens": {
     "id": "PostTokens",
@@ -11767,7 +11969,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "SSO Enroll",
     "description": "",
     "parameters": [],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "ReadMyApikey": {
     "id": "ReadMyApikey",
@@ -11992,7 +12195,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "CreateSubscriptionDomain": {
     "id": "CreateSubscriptionDomain",
@@ -12009,7 +12213,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "ReadSubscription": {
     "id": "ReadSubscription",
@@ -12087,7 +12292,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteSubscriptionDomain": {
     "id": "DeleteSubscriptionDomain",
@@ -12111,7 +12317,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetResellers": {
     "id": "GetResellers",
@@ -12141,7 +12348,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "Count Resellers",
     "description": "",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetResellersByCount": {
     "id": "GetResellersByCount",
@@ -12159,7 +12367,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "UpdateReseller": {
     "id": "UpdateReseller",
@@ -12470,7 +12679,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetPhonenumbers": {
     "id": "GetPhonenumbers",
@@ -12755,7 +12965,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDevices": {
     "id": "GetDevices",
@@ -12830,7 +13041,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetResellersByDevicesCount": {
     "id": "GetResellersByDevicesCount",
@@ -12860,7 +13072,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "CountDevices": {
     "id": "CountDevices",
@@ -12895,7 +13108,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByDevicesByCount": {
     "id": "GetDomainsByDevicesByCount",
@@ -12931,7 +13145,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "UpdateDevice": {
     "id": "UpdateDevice",
@@ -13038,7 +13253,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetSupportedModels": {
     "id": "GetSupportedModels",
@@ -13176,7 +13392,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "Count Mac Addresses",
     "description": "",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByPhones": {
     "id": "GetDomainsByPhones",
@@ -13298,7 +13515,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsBySitesList": {
     "id": "GetDomainsBySitesList",
@@ -13315,7 +13533,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsBySites": {
     "id": "GetDomainsBySites",
@@ -13366,7 +13585,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PutDomainsBySitesBy": {
     "id": "PutDomainsBySitesBy",
@@ -13534,7 +13754,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "ReadAgents": {
     "id": "ReadAgents",
@@ -13603,7 +13824,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "ReadAgentsDomain": {
     "id": "ReadAgentsDomain",
@@ -13871,7 +14093,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": "When used in path the callqueue value will link to a extension id for a preconfigured callqueue."
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "GetDomainsByStatisticsCallqueuesBy": {
     "id": "GetDomainsByStatisticsCallqueuesBy",
@@ -13927,7 +14150,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByStatisticsCallqueuesAggregate": {
     "id": "GetDomainsByStatisticsCallqueuesAggregate",
@@ -13977,7 +14201,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByStatisticsQueuePerQueue": {
     "id": "GetDomainsByStatisticsQueuePerQueue",
@@ -14027,7 +14252,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByStatisticsAgent": {
     "id": "GetDomainsByStatisticsAgent",
@@ -14077,7 +14303,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByStatisticsAgentCallqueuesBy": {
     "id": "GetDomainsByStatisticsAgentCallqueuesBy",
@@ -14133,7 +14360,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByStatisticsAgentBy": {
     "id": "GetDomainsByStatisticsAgentBy",
@@ -14183,7 +14411,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByStatisticsDNIS": {
     "id": "GetDomainsByStatisticsDNIS",
@@ -14226,7 +14455,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByStatisticsDNISCallqueuesBy": {
     "id": "GetDomainsByStatisticsDNISCallqueuesBy",
@@ -14275,7 +14505,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByStatisticsAgentLog": {
     "id": "GetDomainsByStatisticsAgentLog",
@@ -14325,7 +14556,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "SendEmail": {
     "id": "SendEmail",
@@ -14377,7 +14609,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": "This is the end of the time window for a given query. The format is based on RFC3339 but also will support additonal params for use in providing a timezone which will allow the API to give the correct range for a given set of data and will be formated in respone using the same format. Allowed values same as datetime-start."
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByCallqueuereportAbandonedBy": {
     "id": "GetDomainsByCallqueuereportAbandonedBy",
@@ -14412,7 +14645,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": "This is the end of the time window for a given query. The format is based on RFC3339 but also will support additonal params for use in providing a timezone which will allow the API to give the correct range for a given set of data and will be formated in respone using the same format. Allowed values same as datetime-start."
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByDispositions": {
     "id": "GetDomainsByDispositions",
@@ -14429,7 +14663,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PostDomainsByDispositions": {
     "id": "PostDomainsByDispositions",
@@ -14446,7 +14681,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "GetDomainsByUsersByAnswerrules": {
     "id": "GetDomainsByUsersByAnswerrules",
@@ -14515,7 +14751,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsUsersAnswerrules": {
     "id": "GetDomainsUsersAnswerrules",
@@ -14655,7 +14892,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PostDomainsByNumberFilters": {
     "id": "PostDomainsByNumberFilters",
@@ -14672,7 +14910,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteDomainsByNumberFilters": {
     "id": "DeleteDomainsByNumberFilters",
@@ -14689,7 +14928,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "GetDomainsByUsersBynumberFilters": {
     "id": "GetDomainsByUsersBynumberFilters",
@@ -14712,7 +14952,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PostDomainsByUsersByNumberFilters": {
     "id": "PostDomainsByUsersByNumberFilters",
@@ -14735,7 +14976,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteDomainsByUsersByNumberFilters": {
     "id": "DeleteDomainsByUsersByNumberFilters",
@@ -14758,7 +15000,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PostDomainsByAutoattendants": {
     "id": "PostDomainsByAutoattendants",
@@ -14882,7 +15125,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "ReadVoicemails": {
     "id": "ReadVoicemails",
@@ -14942,7 +15186,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "ReadVoicemail": {
     "id": "ReadVoicemail",
@@ -15159,7 +15404,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "ReadGreeting": {
     "id": "ReadGreeting",
@@ -15406,7 +15652,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "UpdateMohDomainTTS": {
     "id": "UpdateMohDomainTTS",
@@ -15605,7 +15852,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "CreateMohUserBase64": {
     "id": "CreateMohUserBase64",
@@ -15822,7 +16070,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "UpdateMsgDomainFileUpload": {
     "id": "UpdateMsgDomainFileUpload",
@@ -15939,7 +16188,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "UpdateMsgUserFileUpload": {
     "id": "UpdateMsgUserFileUpload",
@@ -16486,7 +16736,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetResellersByScheduleCount": {
     "id": "GetResellersByScheduleCount",
@@ -16504,7 +16755,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByScheduleByCount": {
     "id": "GetDomainsByScheduleByCount",
@@ -16528,7 +16780,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetSipFlow": {
     "id": "GetSipFlow",
@@ -16739,7 +16992,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByCalls": {
     "id": "GetDomainsByCalls",
@@ -16909,7 +17163,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PatchDomainsByUsersByCallsByTransfer": {
     "id": "PatchDomainsByUsersByCallsByTransfer",
@@ -17059,7 +17314,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PostCallsReport": {
     "id": "PostCallsReport",
@@ -17069,7 +17325,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "Report Active Calls",
     "description": "",
     "parameters": [],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "GetDomainsByContacts": {
     "id": "GetDomainsByContacts",
@@ -17826,7 +18083,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "ReadDialrules": {
     "id": "ReadDialrules",
@@ -17898,7 +18156,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "ReadDialrule": {
     "id": "ReadDialrule",
@@ -18001,7 +18260,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "Read Dialplans",
     "description": "",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PostDialplans": {
     "id": "PostDialplans",
@@ -18011,7 +18271,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "Create Dialplan Global",
     "description": "",
     "parameters": [],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PostDomainsByDialplans": {
     "id": "PostDomainsByDialplans",
@@ -18028,7 +18289,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PutDomainsByDialplansBy": {
     "id": "PutDomainsByDialplansBy",
@@ -18052,7 +18314,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteDomainsByDialplansBy": {
     "id": "DeleteDomainsByDialplansBy",
@@ -18076,7 +18339,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDialpolicy": {
     "id": "GetDialpolicy",
@@ -18086,7 +18350,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "Read Policies",
     "description": "",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PostDialpolicy": {
     "id": "PostDialpolicy",
@@ -18096,7 +18361,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "Create Dialpolicy Table",
     "description": "",
     "parameters": [],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "GetDialpolicyBy": {
     "id": "GetDialpolicyBy",
@@ -18114,7 +18380,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PutDialpolicyBy": {
     "id": "PutDialpolicyBy",
@@ -18132,7 +18399,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteDialpolicyBy": {
     "id": "DeleteDialpolicyBy",
@@ -18150,7 +18418,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByDialpolicyBy": {
     "id": "GetDomainsByDialpolicyBy",
@@ -18174,7 +18443,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PutDomainsByDialpolicyBy": {
     "id": "PutDomainsByDialpolicyBy",
@@ -18198,7 +18468,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteDomainsByDialpolicyBy": {
     "id": "DeleteDomainsByDialpolicyBy",
@@ -18222,7 +18493,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDialpolicyByPermission": {
     "id": "GetDialpolicyByPermission",
@@ -18240,7 +18512,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "CreatePermission": {
     "id": "CreatePermission",
@@ -18258,7 +18531,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "GetDomainsByDialpolicyByPermission": {
     "id": "GetDomainsByDialpolicyByPermission",
@@ -18282,7 +18556,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "CreatePermissionDomain": {
     "id": "CreatePermissionDomain",
@@ -18306,7 +18581,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "ReadPermission": {
     "id": "ReadPermission",
@@ -18331,7 +18607,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "UpdatePermission": {
     "id": "UpdatePermission",
@@ -18356,7 +18633,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeletePermission": {
     "id": "DeletePermission",
@@ -18381,7 +18659,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "ReadPermissionDomain": {
     "id": "ReadPermissionDomain",
@@ -18412,7 +18691,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "UpdatePermissionDomain": {
     "id": "UpdatePermissionDomain",
@@ -18443,7 +18723,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeletePermissionDomain": {
     "id": "DeletePermissionDomain",
@@ -18474,7 +18755,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetMessageSessionsForDomain": {
     "id": "GetMessageSessionsForDomain",
@@ -18497,7 +18779,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "startSession": {
     "id": "startSession",
@@ -18520,7 +18803,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "GetMessageSessionsForUser": {
     "id": "GetMessageSessionsForUser",
@@ -18579,7 +18863,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "updateMessageSessionParticipants": {
     "id": "updateMessageSessionParticipants",
@@ -19137,7 +19422,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetConnections": {
     "id": "GetConnections",
@@ -19467,7 +19753,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PostRoutesByRoutecon": {
     "id": "PostRoutesByRoutecon",
@@ -19485,7 +19772,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "GetRouteconCount": {
     "id": "GetRouteconCount",
@@ -19521,7 +19809,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteRoute": {
     "id": "DeleteRoute",
@@ -19539,7 +19828,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PutRoutesByRouteconBy": {
     "id": "PutRoutesByRouteconBy",
@@ -19564,7 +19854,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteRouteCon": {
     "id": "DeleteRouteCon",
@@ -19589,7 +19880,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PostDomainsByUsersByMeetingsByInstanceByLog": {
     "id": "PostDomainsByUsersByMeetingsByInstanceByLog",
@@ -19673,7 +19965,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "Read Iotum Video Domain Resellers",
     "description": "Read a Iotum Company (domain)",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByUsersByVideo": {
     "id": "GetDomainsByUsersByVideo",
@@ -19696,7 +19989,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByVideoHosts": {
     "id": "GetDomainsByVideoHosts",
@@ -19713,7 +20007,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByUsersByVideoConference": {
     "id": "GetDomainsByUsersByVideoConference",
@@ -19736,7 +20031,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PostDomainsByUsersByVideoConference": {
     "id": "PostDomainsByUsersByVideoConference",
@@ -19759,7 +20055,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "GetDomainsByUsersByVideoContacts": {
     "id": "GetDomainsByUsersByVideoContacts",
@@ -19782,7 +20079,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByVideo": {
     "id": "GetDomainsByVideo",
@@ -19799,7 +20097,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PutDomainsByVideo": {
     "id": "PutDomainsByVideo",
@@ -19816,7 +20115,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PostDomainsByVideo": {
     "id": "PostDomainsByVideo",
@@ -19833,7 +20133,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteDomainsByVideo": {
     "id": "DeleteDomainsByVideo",
@@ -19850,7 +20151,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByVideoProducts": {
     "id": "GetDomainsByVideoProducts",
@@ -19867,7 +20169,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByVideoAvailableproducts": {
     "id": "GetDomainsByVideoAvailableproducts",
@@ -19884,7 +20187,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PostDomainsByUsersByHost": {
     "id": "PostDomainsByUsersByHost",
@@ -19907,7 +20211,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PutDomainsByUsersByHost": {
     "id": "PutDomainsByUsersByHost",
@@ -19930,7 +20235,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteDomainsByUsersByHost": {
     "id": "DeleteDomainsByUsersByHost",
@@ -19953,7 +20259,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PostDomainsByUsersByHostContacts": {
     "id": "PostDomainsByUsersByHostContacts",
@@ -19976,7 +20283,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PostDomainsByVideoSubscriptionBy": {
     "id": "PostDomainsByVideoSubscriptionBy",
@@ -20000,7 +20308,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteDomainsByVideoSubscriptionBy": {
     "id": "DeleteDomainsByVideoSubscriptionBy",
@@ -20024,7 +20333,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PutDomainsByVideoSubscriptions": {
     "id": "PutDomainsByVideoSubscriptions",
@@ -20041,7 +20351,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PostDomainsByUsersByMeetingsBy": {
     "id": "PostDomainsByUsersByMeetingsBy",
@@ -20393,7 +20704,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "Update a NS API Configuration",
     "description": "",
     "parameters": [],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "CreateNsApiConfiguration": {
     "id": "CreateNsApiConfiguration",
@@ -20403,7 +20715,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "Create a NS API Configuration",
     "description": "Create a configuration for API or Portal nsconfig file",
     "parameters": [],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "ReadAllNsApiConfigurations": {
     "id": "ReadAllNsApiConfigurations",
@@ -20435,7 +20748,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "boolean"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "DeleteNsApiConfiguration": {
     "id": "DeleteNsApiConfiguration",
@@ -20445,7 +20759,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "Delete a NS API Configuration Copy",
     "description": "Delete a configuration for API or Portal nsconfig file",
     "parameters": [],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "ReadSpecificConfiguration": {
     "id": "ReadSpecificConfiguration",
@@ -20616,7 +20931,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "boolean"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetConfigDefinitions": {
     "id": "GetConfigDefinitions",
@@ -21011,7 +21327,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PutDomainsByTimeframesBy": {
     "id": "PutDomainsByTimeframesBy",
@@ -21035,7 +21352,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteDomainsByTimeframesBy": {
     "id": "DeleteDomainsByTimeframesBy",
@@ -21059,7 +21377,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "GetDomainsByTimeframesBy": {
     "id": "GetDomainsByTimeframesBy",
@@ -21083,7 +21402,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PutDomainsByTimeframesBy_2": {
     "id": "PutDomainsByTimeframesBy_2",
@@ -21107,7 +21427,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PostDomainsByTimeframesBy_2": {
     "id": "PostDomainsByTimeframesBy_2",
@@ -21131,7 +21452,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteDomainsByTimeframesBy_2": {
     "id": "DeleteDomainsByTimeframesBy_2",
@@ -21155,7 +21477,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PostDomainsByTimeframes_3": {
     "id": "PostDomainsByTimeframes_3",
@@ -21196,7 +21519,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PostDomainsByTimeframesBy_3": {
     "id": "PostDomainsByTimeframesBy_3",
@@ -21220,7 +21544,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteDomainsByTimeframesBy_3": {
     "id": "DeleteDomainsByTimeframesBy_3",
@@ -21244,7 +21569,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PostDomainsByTimeframes_4": {
     "id": "PostDomainsByTimeframes_4",
@@ -21285,7 +21611,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteDomainsByTimeframesBy_4": {
     "id": "DeleteDomainsByTimeframesBy_4",
@@ -21309,7 +21636,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PutDomainsByTimeframesBy_5": {
     "id": "PutDomainsByTimeframesBy_5",
@@ -21333,7 +21661,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PostDomainsByTimeframes_5": {
     "id": "PostDomainsByTimeframes_5",
@@ -21374,7 +21703,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PutDomainsByTimeframesBy_7": {
     "id": "PutDomainsByTimeframesBy_7",
@@ -21398,7 +21728,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PutDomainsByTimeframesBy_8": {
     "id": "PutDomainsByTimeframesBy_8",
@@ -21422,7 +21753,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PostDomainsByUsersByTimeframes": {
     "id": "PostDomainsByUsersByTimeframes",
@@ -21521,7 +21853,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PutDomainsByUsersByTimeframesBy": {
     "id": "PutDomainsByUsersByTimeframesBy",
@@ -21551,7 +21884,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteDomainsByUsersByTimeframesBy": {
     "id": "DeleteDomainsByUsersByTimeframesBy",
@@ -21581,7 +21915,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "GetDomainsByUsersByTimeframesBy": {
     "id": "GetDomainsByUsersByTimeframesBy",
@@ -21611,7 +21946,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PutDomainsByUsersByTimeframesBy_2": {
     "id": "PutDomainsByUsersByTimeframesBy_2",
@@ -21641,7 +21977,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PostDomainsByUsersByTimeframesBy_2": {
     "id": "PostDomainsByUsersByTimeframesBy_2",
@@ -21671,7 +22008,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteDomainsByUsersByTimeframesBy_2": {
     "id": "DeleteDomainsByUsersByTimeframesBy_2",
@@ -21701,7 +22039,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PostDomainsByUsersByTimeframes_3": {
     "id": "PostDomainsByUsersByTimeframes_3",
@@ -21754,7 +22093,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PostDomainsByUsersByTimeframesBy_3": {
     "id": "PostDomainsByUsersByTimeframesBy_3",
@@ -21784,7 +22124,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteDomainsByUsersByTimeframesBy_3": {
     "id": "DeleteDomainsByUsersByTimeframesBy_3",
@@ -21814,7 +22155,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PostDomainsByUsersByTimeframes_4": {
     "id": "PostDomainsByUsersByTimeframes_4",
@@ -21867,7 +22209,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteDomainsByUsersByTimeframesBy_4": {
     "id": "DeleteDomainsByUsersByTimeframesBy_4",
@@ -21897,7 +22240,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PutDomainsByUsersByTimeframesBy_5": {
     "id": "PutDomainsByUsersByTimeframesBy_5",
@@ -21927,7 +22271,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PostDomainsByUsersByTimeframes_5": {
     "id": "PostDomainsByUsersByTimeframes_5",
@@ -21980,7 +22325,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PutDomainsByUsersByTimeframesBy_7": {
     "id": "PutDomainsByUsersByTimeframesBy_7",
@@ -22010,7 +22356,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "Delete": {
     "id": "Delete",
@@ -22020,7 +22367,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "Delete All Timeframes for User",
     "description": "",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PutDomainsByUsersByTimeframesBy_8": {
     "id": "PutDomainsByUsersByTimeframesBy_8",
@@ -22050,7 +22398,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "GetHolidaysCountries": {
     "id": "GetHolidaysCountries",
@@ -22060,7 +22409,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "Read List of Supported Countries",
     "description": "Retrieve a list of supported country codes to be used when reading holiday information.",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetHolidaysRegions": {
     "id": "GetHolidaysRegions",
@@ -22070,7 +22420,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "Read List of Supported Regions",
     "description": "Retrieve a list of supported region codes by country, to be used when reading holiday information.",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetHolidaysByBy": {
     "id": "GetHolidaysByBy",
@@ -22102,7 +22453,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "GetHolidaysByByBy": {
     "id": "GetHolidaysByByBy",
@@ -22141,7 +22493,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetFirebase": {
     "id": "GetFirebase",
@@ -22151,7 +22504,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "Read firebase service accounts",
     "description": "",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PostFirebase": {
     "id": "PostFirebase",
@@ -22161,7 +22515,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "Add firebase service account",
     "description": "",
     "parameters": [],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "GetCertificates": {
     "id": "GetCertificates",
@@ -22171,7 +22526,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "Read SSL certificates for CertManager",
     "description": "",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PostCertificates": {
     "id": "PostCertificates",
@@ -22181,7 +22537,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "Create SSL certificate for CertManager",
     "description": "",
     "parameters": [],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "GetCertificatesBy": {
     "id": "GetCertificatesBy",
@@ -22199,7 +22556,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PutCertificatesBy": {
     "id": "PutCertificatesBy",
@@ -22217,7 +22575,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteCertificatesBy": {
     "id": "DeleteCertificatesBy",
@@ -22235,7 +22594,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetCodeBy": {
     "id": "GetCodeBy",
@@ -22253,7 +22613,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetInsightBy": {
     "id": "GetInsightBy",
@@ -22312,7 +22673,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByConferences": {
     "id": "GetDomainsByConferences",
@@ -22329,7 +22691,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PostDomainsByConferences": {
     "id": "PostDomainsByConferences",
@@ -22346,7 +22709,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "GetDomainsByConferencesBy": {
     "id": "GetDomainsByConferencesBy",
@@ -22370,7 +22734,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PutDomainsByConferencesBy": {
     "id": "PutDomainsByConferencesBy",
@@ -22394,7 +22759,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteDomainsByConferencesBy": {
     "id": "DeleteDomainsByConferencesBy",
@@ -22418,7 +22784,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByConferencesCount": {
     "id": "GetDomainsByConferencesCount",
@@ -22435,7 +22802,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByConferencesByCdr": {
     "id": "GetDomainsByConferencesByCdr",
@@ -22480,7 +22848,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByConferencesByParticipants": {
     "id": "GetDomainsByConferencesByParticipants",
@@ -22504,7 +22873,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PostDomainsByConferencesByParticipants": {
     "id": "PostDomainsByConferencesByParticipants",
@@ -22528,7 +22898,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "PutDomainsByConferencesByParticipantsBy": {
     "id": "PutDomainsByConferencesByParticipantsBy",
@@ -22559,7 +22930,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteDomainsByConferencesByParticipantsBy": {
     "id": "DeleteDomainsByConferencesByParticipantsBy",
@@ -22590,7 +22962,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "number"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByPhonetemplates": {
     "id": "GetDomainsByPhonetemplates",
@@ -22607,7 +22980,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PostDomainsByPhonetemplates": {
     "id": "PostDomainsByPhonetemplates",
@@ -22624,7 +22998,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "GetDomainsByPhonetemplatesBy": {
     "id": "GetDomainsByPhonetemplatesBy",
@@ -22648,7 +23023,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PutDomainsByPhonetemplatesBy": {
     "id": "PutDomainsByPhonetemplatesBy",
@@ -22672,7 +23048,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteDomainsByPhonetemplatesBy": {
     "id": "DeleteDomainsByPhonetemplatesBy",
@@ -22696,7 +23073,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDeviceprofiles": {
     "id": "GetDeviceprofiles",
@@ -22706,7 +23084,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "Read Device Profiles",
     "description": "",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDeviceprofilesCount": {
     "id": "GetDeviceprofilesCount",
@@ -22716,7 +23095,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
     "summary": "Count Device Profiles",
     "description": "",
     "parameters": [],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDeviceprofilesByBy": {
     "id": "GetDeviceprofilesByBy",
@@ -22741,7 +23121,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByPhoneconfigurationCount": {
     "id": "GetDomainsByPhoneconfigurationCount",
@@ -22758,7 +23139,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByPhoneconfigurationBy": {
     "id": "GetDomainsByPhoneconfigurationBy",
@@ -22782,7 +23164,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PutDomainsByPhoneconfigurationBy": {
     "id": "PutDomainsByPhoneconfigurationBy",
@@ -22806,7 +23189,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "DeleteDomainsByPhoneconfigurationBy": {
     "id": "DeleteDomainsByPhoneconfigurationBy",
@@ -22830,7 +23214,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "PostDomainsByPhoneconfiguration": {
     "id": "PostDomainsByPhoneconfiguration",
@@ -22847,7 +23232,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": true
+    "hasRequestBody": true,
+    "minApiVersion": 45
   },
   "GetDomainsByChartsByCount": {
     "id": "GetDomainsByChartsByCount",
@@ -22878,7 +23264,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByChartsByList": {
     "id": "GetDomainsByChartsByList",
@@ -22902,7 +23289,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "number"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByUsersByDashboardsCount": {
     "id": "GetDomainsByUsersByDashboardsCount",
@@ -22932,7 +23320,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "number"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByUsersByDashboardsList": {
     "id": "GetDomainsByUsersByDashboardsList",
@@ -22962,7 +23351,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "number"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByQuotas": {
     "id": "GetDomainsByQuotas",
@@ -22979,7 +23369,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetResellersByQuotas": {
     "id": "GetResellersByQuotas",
@@ -22997,7 +23388,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByQuotasCount": {
     "id": "GetDomainsByQuotasCount",
@@ -23014,7 +23406,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetResellersByQuotasCount": {
     "id": "GetResellersByQuotasCount",
@@ -23032,7 +23425,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByDepartmentsList": {
     "id": "GetDomainsByDepartmentsList",
@@ -23049,7 +23443,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "description": ""
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByPresenceList": {
     "id": "GetDomainsByPresenceList",
@@ -23086,7 +23481,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetDomainsByDepartmentsByPresenceList": {
     "id": "GetDomainsByDepartmentsByPresenceList",
@@ -23130,7 +23526,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetAuditlog": {
     "id": "GetAuditlog",
@@ -23209,7 +23606,8 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   },
   "GetAccesslog": {
     "id": "GetAccesslog",
@@ -23288,6 +23686,7 @@ export const operationMap: Record<string, GeneratedOpenApiOperation> = {
         "schemaType": "string"
       }
     ],
-    "hasRequestBody": false
+    "hasRequestBody": false,
+    "minApiVersion": 45
   }
 };
