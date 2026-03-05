@@ -22,7 +22,8 @@ Nothing in this file is a commitment. Items may change, be re-prioritized, or be
 - Implement [Synchronous Requests](https://docs.ns-api.com/docs/async-202-vs-sync-200) for creates on supported endpoints (a NetSapiens feature that returns the newly created resource immediately instead of a job ID).
 - Add a way to easily review [CDR Field Mappings](https://docs.ns-api.com/docs/cdr-field-mappings) within the node for easy reference.
 - Add a way to easily review [Application Mappings in Phone Numbers and Dial Rules](https://docs.ns-api.com/docs/application-mapping-in-phonenumbers-dialrules) within the node for easy reference.
-- ~~Consider supporting access/refresh tokens for authentication via [`POST /tokens`](https://docs.ns-api.com/reference/post_tokens-1).~~ **Done** — OAuth2 password grant credential added with automatic token caching and refresh.
+- ~~Consider supporting access/refresh tokens for authentication via [`POST /tokens`](https://docs.ns-api.com/reference/post_tokens-1).~~ **Done** — OAuth2 password grant credential added with automatic token caching and refresh in version 0.2.4.
 
  - Auto Attendant -> Read Specific Auto Attendant: Filter the list of users so only auto-attendants are displayed.
  - Auto Attendant -> Read Specific Auto Attendant: Pull possible options for the Prompt field from the selected auto-attendant once selected, rather than requiring entry. Ensure the Prompt field is marked as required.
+ - Add JWT format validation in addition to JWT server validation to provide an easy choice to verify a JWT token's basic format and existence (quickly with local code) or with the existing server-based validation check. The server check provides assurance of user validity, but a validation check would be a faster local method of validation for less security-relevant user permission confirmations, while keeping compatible outputs between the two for workflow usage.
