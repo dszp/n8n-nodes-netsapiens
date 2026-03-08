@@ -4,6 +4,17 @@ All notable changes to the n8n-nodes-netsapiens project will be documented in th
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.5] - 2026-03-08
+
+### Changed
+
+- Softened v45+ version checks from blocking pre-flight errors to advisory notices — operations now attempt the API call and report version info only on failure.
+- Added 404 response handling alongside existing "No Route Found [92]" detection, with version-enriched error messages.
+- Changed v45+ notice text from "requires" to "may require" with "Test to confirm" guidance.
+- Removed `(v45+)` suffix from operation dropdown names; description hint "May require NetSapiens API v45+" remains.
+- Overrode CountDevices to remove v45+ tag (confirmed working on v44 servers).
+- Added release process documentation.
+
 ## [0.2.4] - 2026-03-05
 
 ### Added
