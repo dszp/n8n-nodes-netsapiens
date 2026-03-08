@@ -45,6 +45,9 @@ export const operationOverrides: Record<string, OperationOverride> = {
 	PostDomainsByUsersByMsg: { displayName: 'Create a New Hold Message for User from Upload' },
 	UpdateMsgUserFileUpload: { displayName: 'Update Hold Message for User from Upload' },
 
+	// ── Devices: CountDevices exists in pre-v45 servers despite not being in the original spec ──
+	CountDevices: { minApiVersion: 0 },
+
 	// ── Images: Consolidate FileUpload into Base64 "Upload" operations ──
 	UpdateImageFileUpload: { hidden: true },
 	CreateImageBase64: { displayName: 'Create Image from Upload' },
