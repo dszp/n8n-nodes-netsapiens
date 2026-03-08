@@ -2098,14 +2098,14 @@ function getOperationOptionsForResource(resource: string): Options[] {
 			// For description, prioritize version note, then spec description
 			const specDescription = o.description?.trim() || undefined;
 			const descriptionText = minVersion
-				? `Requires NetSapiens API v${minVersion}+`
+				? `May require NetSapiens API v${minVersion}+`
 				: specDescription
 					? specDescription.replace(/\n/g, ' ').slice(0, 200)
 					: undefined;
 			return {
-				name: minVersion ? `${label} (v${minVersion}+)` : label,
+				name: label,
 				value: o.id,
-				action: minVersion ? `${actionText} (v${minVersion}+)` : actionText,
+				action: actionText,
 				...(descriptionText && { description: descriptionText }),
 			};
 		});
@@ -3322,17 +3322,17 @@ export class NetSapiens implements INodeType {
 			// Info notice for v45+ operations
 			{
 				displayName:
-					'This operation requires NetSapiens API v45+. It will not work on older server versions.',
+					'This operation may require NetSapiens API v45+. It may not work on older server versions. Test to confirm.',
 				name: 'v45Notice',
 				type: 'notice',
 				default: '',
 				displayOptions: {
 					show: {
 						operation: operations
-							.filter(
-								(o) =>
-									(operationOverrides[o.id]?.minApiVersion ?? o.minApiVersion) !== undefined,
-							)
+							.filter((o) => {
+								const v = operationOverrides[o.id]?.minApiVersion ?? o.minApiVersion;
+								return v !== undefined && v > 0;
+							})
 							.map((o) => o.id),
 					},
 				},
@@ -4817,36 +4817,6 @@ export class NetSapiens implements INodeType {
 					throw new NodeOperationError(this.getNode(), `Unknown operation: ${operationId}`, { itemIndex });
 				}
 
-				// Generalized pre-flight version check for operations requiring a minimum API version
-				const operationMinVersion =
-					operationOverrides[operation.id]?.minApiVersion ?? operation.minApiVersion;
-				if (operationMinVersion) {
-					const shouldRefresh = Boolean(
-						this.getNodeParameter('refreshOptions', itemIndex, false),
-					);
-					const apiVersion = await getServerApiVersion(this, auth, baseUrl, {
-						refresh: shouldRefresh,
-					});
-					if (
-						typeof apiVersion.major === 'number' &&
-						apiVersion.major < operationMinVersion
-					) {
-						const raw = apiVersion.raw ? ` (detected: ${apiVersion.raw})` : '';
-						const opLabel =
-							operationOverrides[operation.id]?.displayName ??
-							operation.summary ??
-							operation.id;
-						throw new NodeOperationError(
-							this.getNode(),
-							`${opLabel} requires NetSapiens API v${operationMinVersion}+${raw}`,
-							{
-								itemIndex,
-								description: `This endpoint is not available on your server. Upgrade to NetSapiens API version ${operationMinVersion}+ or use a different operation.`,
-							},
-						);
-					}
-				}
-
 				const override = operationOverrides[operation.id];
 				const effectiveResource = override?.resource ?? operation.resource;
 
@@ -5627,7 +5597,7 @@ export class NetSapiens implements INodeType {
 				const isNoRouteFound =
 					/no\s+route\s+found\s*\[92\]/i.test(errorText) || /no\s+route\s+found/i.test(errorText);
 
-				if (isNoRouteFound) {
+				if (isNoRouteFound || statusCode === 404) {
 					const shouldRefresh = Boolean(this.getNodeParameter('refreshOptions', itemIndex, false));
 					const apiVersion = await getServerApiVersion(this, auth, baseUrl, { refresh: shouldRefresh });
 					const versionText = apiVersion.raw
@@ -5642,15 +5612,19 @@ export class NetSapiens implements INodeType {
 						operationOverrides[operationId]?.minApiVersion ??
 						operationDetails?.minApiVersion;
 					const minVersionNote = minVersion
-						? ` This endpoint requires API version ${minVersion}+.`
+						? ` This endpoint may require API version ${minVersion}+.`
 						: '';
+
+					const serverResponse = isNoRouteFound
+						? `The server returned "No Route Found [92]" for ${method} ${opPath}.`
+						: `The server returned a 404 for ${method} ${opPath}.`;
 
 					throw new NodeOperationError(
 						this.getNode(),
 						'This NetSapiens server does not support the requested endpoint.',
 						{
 							itemIndex,
-							description: `The server returned "No Route Found [92]" for ${method} ${opPath}.${versionText}${minVersionNote}`,
+							description: `${serverResponse}${versionText}${minVersionNote}`,
 						},
 					);
 				}
