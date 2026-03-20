@@ -4,6 +4,18 @@ All notable changes to the n8n-nodes-netsapiens project will be documented in th
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.6] - 2026-03-19
+
+### Fixed
+
+- Fixed Update User operation failing with "Missing required field" when First Name, Last Name, or Email Address were left empty — empty fields are now correctly omitted from the API request, leaving the current value unchanged.
+
+### Changed
+
+- Added "Clear" toggles for First Name, Last Name, and Email Address on the Update User operation — when enabled, sends an empty string to the API to explicitly clear the field value.
+- Changed Caller ID Number from a numeric field to a string field, properly handling phone numbers with leading zeros or formatting.
+- Updated field descriptions for Update User required fields from "Required. Leave empty to keep the current value" to "Leave empty to keep the current value" for accuracy.
+
 ## [0.2.5] - 2026-03-08
 
 ### Changed
