@@ -11,23 +11,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Use Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '22'
-
-      - name: Setup pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@9.15.4 --activate
+          node-version: '24'
 
       - name: Install dependencies
-        run: 'pnpm install --no-frozen-lockfile'
+        run: npm ci
 
       - name: Run lint
-        run: 'pnpm run lint'
+        run: npm run lint
 
       - name: Run build
-        run: 'pnpm run build'
+        run: npm run build

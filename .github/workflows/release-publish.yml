@@ -35,28 +35,14 @@ jobs:
           echo "Using tag: $(cat $GITHUB_OUTPUT | sed -n 's/^release_tag=//p')"
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ steps.vars.outputs.release_tag }}
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
-
-      - name: Setup pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@9.15.4 --activate
-
-      - name: Show npm version
-        run: npm --version
-
-      - name: Upgrade npm
-        run: npm install -g npm@latest
-
-      - name: Show npm version (after upgrade)
-        run: npm --version
 
       - name: Confirm OIDC environment is available
         run: |
@@ -64,7 +50,7 @@ jobs:
           node -e "console.log('ACTIONS_ID_TOKEN_REQUEST_TOKEN present:', Boolean(process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN))"
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: npm ci
 
       - name: Verify tag matches package.json version
         env:
@@ -80,7 +66,7 @@ jobs:
           fi
 
       - name: Build
-        run: pnpm run build
+        run: npm run build
 
       - name: Ensure Trusted Publishing (no npm token auth)
         run: |
@@ -106,4 +92,3 @@ jobs:
 
       - name: Publish
         run: npm publish --provenance --access public
-        

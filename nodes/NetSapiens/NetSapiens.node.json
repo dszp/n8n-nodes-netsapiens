@@ -1,6 +1,6 @@
 {
 	"node": "n8n-nodes-netsapiens",
-	"nodeVersion": "0.2.5",
+	"nodeVersion": "0.2.6",
 	"codexVersion": "1.0",
 	"categories": ["Communication"],
 	"resources": {

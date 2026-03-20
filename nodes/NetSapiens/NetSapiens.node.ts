@@ -286,6 +286,12 @@ const createUserRequiredFields = ['user', 'name-first-name', 'name-last-name', '
 
 const updateUserRequiredFields = ['name-first-name', 'name-last-name', 'email-address', 'user-scope'];
 
+const clearableUpdateFields = new Set(['name-first-name', 'name-last-name', 'email-address']);
+
+function clearFieldToggleKey(operationId: string, fieldName: string): string {
+	return operationKey(operationId, `clear__${fieldName}`);
+}
+
 // --- Media templated operation constants (MOH, Greetings, Hold Messages) ---
 
 const mediaTtsOperationIds = new Set([
@@ -703,7 +709,7 @@ const userCommonFields: Array<{
 	{
 		displayName: 'Caller ID Number',
 		name: 'caller-id-number',
-		type: 'number',
+		type: 'string',
 		default: '',
 	},
 	{
@@ -801,7 +807,6 @@ const userCommonFields: Array<{
 
 const numericUserFields = new Set([
 	'area-code',
-	'caller-id-number',
 	'caller-id-number-emergency',
 	'directory-name-number-dtmf-mapping',
 	'directory-override-order-duplicate-dtmf-mapping',
@@ -1091,7 +1096,7 @@ function buildTemplatedUserFields(): INodeProperties[] {
 		const updateDefault = isOptionsField ? '__USE_CURRENT__' : field.default;
 
 		const updateDescription = isRequired
-			? `${field.description ? `${field.description} ` : ''}Required. Leave empty to keep the current value`
+			? `${field.description ? `${field.description} ` : ''}Leave empty to keep the current value`
 			: field.description;
 
 		if (field.name === 'site') {
@@ -1191,17 +1196,40 @@ function buildTemplatedUserFields(): INodeProperties[] {
 			continue;
 		}
 
-		fields.push({
-			displayName: field.displayName,
-			name: operationBodyFieldKey(templatedUserUpdateId, field.name),
-			type: field.type,
-			default: updateDefault,
-			required: isRequired,
-			displayOptions: { show: shouldShow },
-			description: updateDescription,
-			options: updateOptions,
-			typeOptions: field.typeOptions,
-		});
+		const isClearable = clearableUpdateFields.has(field.name);
+		if (isClearable) {
+			const clearToggleName = clearFieldToggleKey(templatedUserUpdateId, field.name);
+			fields.push({
+				displayName: `Clear ${field.displayName}`,
+				name: clearToggleName,
+				type: 'boolean',
+				default: false,
+				displayOptions: { show: shouldShow },
+				description: `Whether to clear the ${field.displayName.toLowerCase()} field (send empty value to the API)`,
+			});
+			fields.push({
+				displayName: field.displayName,
+				name: operationBodyFieldKey(templatedUserUpdateId, field.name),
+				type: field.type,
+				default: updateDefault,
+				displayOptions: { show: { ...shouldShow, [clearToggleName]: [false] } },
+				description: updateDescription,
+				options: updateOptions,
+				typeOptions: field.typeOptions,
+			});
+		} else {
+			fields.push({
+				displayName: field.displayName,
+				name: operationBodyFieldKey(templatedUserUpdateId, field.name),
+				type: field.type,
+				default: updateDefault,
+				required: isRequired,
+				displayOptions: { show: shouldShow },
+				description: updateDescription,
+				options: updateOptions,
+				typeOptions: field.typeOptions,
+			});
+		}
 	}
 
 	fields.push({
@@ -1582,6 +1610,7 @@ function buildTemplatedBody(
 		includeSynchronous?: boolean;
 		requestMode?: RequestMode;
 		readOnlyFields?: Set<string>;
+		strictRequired?: boolean;
 	},
 ): IDataObject {
 	const selected = new Set<string>();
@@ -1598,6 +1627,19 @@ function buildTemplatedBody(
 		if (options.readOnlyFields?.has(fieldName)) {
 			continue;
 		}
+
+		if (clearableUpdateFields.has(fieldName)) {
+			const clearToggle = context.getNodeParameter(
+				clearFieldToggleKey(operationId, fieldName),
+				itemIndex,
+				false,
+			) as boolean;
+			if (clearToggle) {
+				body[fieldName] = '';
+				continue;
+			}
+		}
+
 		const raw = context.getNodeParameter(operationBodyFieldKey(operationId, fieldName), itemIndex, '') as unknown;
 		const normalizedRaw =
 			raw && typeof raw === 'object' && 'value' in (raw as IDataObject)
@@ -1622,13 +1664,15 @@ function buildTemplatedBody(
 		body[fieldName] = value as IDataObject[''];
 	}
 
-	for (const requiredField of requiredFields) {
-		if (body[requiredField] === undefined) {
-			throw new NodeOperationError(
-				context.getNode(),
-				`Missing required field: ${requiredField}`,
-				{ itemIndex },
-			);
+	if (options.strictRequired !== false) {
+		for (const requiredField of requiredFields) {
+			if (body[requiredField] === undefined) {
+				throw new NodeOperationError(
+					context.getNode(),
+					`Missing required field: ${requiredField}`,
+					{ itemIndex },
+				);
+			}
 		}
 	}
 
@@ -4919,6 +4963,7 @@ export class NetSapiens implements INodeType {
 						body = buildTemplatedBody(this, itemIndex, templatedUserUpdateId, updateUserRequiredFields, {
 							includeSynchronous: false,
 							readOnlyFields: userUpdateReadOnlyFields,
+							strictRequired: false,
 						});
 					}
 
