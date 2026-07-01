@@ -4701,6 +4701,9 @@ export class NetSapiens implements INodeType {
 								pairedItem: { item: itemIndex },
 							});
 						} else {
+							// Re-throw the raw error so the centralized catch below can detect the
+							// HTTP status and normalize it into a NodeOperationError.
+							// eslint-disable-next-line @n8n/community-nodes/require-node-api-error
 							throw error;
 						}
 					}
@@ -4996,9 +4999,15 @@ export class NetSapiens implements INodeType {
 									body: fallbackBody,
 								});
 							} catch {
+								// The asyncAck fallback also failed; re-throw the original error so the
+								// centralized catch below can normalize it into a NodeOperationError.
+								// eslint-disable-next-line @n8n/community-nodes/require-node-api-error
 								throw error;
 							}
 						} else {
+							// Re-throw the raw error so the centralized catch below can detect the
+							// HTTP status and normalize it into a NodeOperationError.
+							// eslint-disable-next-line @n8n/community-nodes/require-node-api-error
 							throw error;
 						}
 					}
@@ -5675,6 +5684,8 @@ export class NetSapiens implements INodeType {
 				}
 
 				if (error instanceof NodeOperationError) {
+					// Already a NodeOperationError; re-throw as-is without re-wrapping.
+					// eslint-disable-next-line @n8n/community-nodes/require-node-api-error
 					throw error;
 				}
 
