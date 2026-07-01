@@ -4,6 +4,14 @@ All notable changes to the n8n-nodes-netsapiens project will be documented in th
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.7] - 2026-07-01
+
+### Changed
+
+- Updated development dependencies to their latest compatible versions.
+- Added an `allowScripts` allowlist to `package.json` covering vetted install scripts (`esbuild`, `isolated-vm`, `unrs-resolver`) under npm's install-script gating; the upstream `only-allow pnpm` guard is intentionally left blocked.
+- Resolved new `@n8n/community-nodes/require-node-api-error` lint errors surfaced by the updated linter. Intentional raw re-throws that defer to the node's centralized error handler (which normalizes them into `NodeOperationError` with HTTP-status detection) are now documented inline, and unreachable dead code was removed. No runtime behavior change.
+
 ## [0.2.6] - 2026-03-19
 
 ### Fixed

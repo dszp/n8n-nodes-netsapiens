@@ -82,12 +82,12 @@ export async function getOAuth2Token(
 					json: true,
 				})) as IDataObject;
 			} catch (fallbackError: unknown) {
+				// throwOAuth2Error returns `never`, so control never continues past this call.
 				throwOAuth2Error(fallbackError, credentials.username);
-				throw fallbackError; // unreachable but satisfies TypeScript
 			}
 		} else {
+			// throwOAuth2Error returns `never`, so control never continues past this call.
 			throwOAuth2Error(error, credentials.username);
-			throw error; // unreachable but satisfies TypeScript
 		}
 	}
 
@@ -323,10 +323,16 @@ export async function netSapiensOAuth2Request(
 			return await context.helpers.httpRequest.call(context, options);
 		}
 		if (statusCode === 403) {
+			// Transport layer throws a plain Error with a friendly message; the node's
+			// execute() catch normalizes it into a NodeOperationError with node context.
+			// eslint-disable-next-line @n8n/community-nodes/require-node-api-error
 			throw new Error(
 				`The authenticated user '${credentials.username}' does not have sufficient permissions for this operation. Check the user's scope and role in your NetSapiens administration portal.`,
 			);
 		}
+		// Re-throw the raw API error so execute()'s centralized handler can read its HTTP
+		// status and normalize it into a NodeOperationError.
+		// eslint-disable-next-line @n8n/community-nodes/require-node-api-error
 		throw error;
 	}
 }

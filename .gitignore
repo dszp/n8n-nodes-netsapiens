@@ -13,3 +13,4 @@ coverage
 .env.*
 
 .claude/settings.local.json
+.vscode/*

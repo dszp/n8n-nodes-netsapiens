@@ -1,6 +1,6 @@
 {
     "name": "n8n-nodes-netsapiens",
-    "version": "0.2.6",
+    "version": "0.2.7",
     "description": "n8n Community Node for connecting to and querying NetSapiens-based VoIP phone switch/PBX. ",
     "license": "MIT",
     "homepage": "",
@@ -55,5 +55,10 @@
     },
     "peerDependencies": {
         "n8n-workflow": "*"
+    },
+    "allowScripts": {
+        "esbuild@0.28.1": true,
+        "isolated-vm@6.1.2": true,
+        "unrs-resolver@1.12.2": true
     }
 }
