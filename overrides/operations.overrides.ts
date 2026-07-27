@@ -45,8 +45,10 @@ export const operationOverrides: Record<string, OperationOverride> = {
 	PostDomainsByUsersByMsg: { displayName: 'Create a New Hold Message for User from Upload' },
 	UpdateMsgUserFileUpload: { displayName: 'Update Hold Message for User from Upload' },
 
-	// ── Devices: CountDevices exists in pre-v45 servers despite not being in the original spec ──
-	CountDevices: { minApiVersion: 0 },
+	// NOTE: CountDevices previously needed `minApiVersion: 0` here, because the generator's v44
+	// baseline was the ancient NetSapiens.v2.3.1.0 spec and mislabelled it v45-only. The baseline
+	// is now a real 44.4.10 core spec, which classifies it correctly, so the hand-patch is gone.
+	// Add a manual minApiVersion here only for an endpoint a core serves but does not document.
 
 	// ── Images: Consolidate FileUpload into Base64 "Upload" operations ──
 	UpdateImageFileUpload: { hidden: true },

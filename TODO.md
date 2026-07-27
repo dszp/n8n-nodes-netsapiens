@@ -14,7 +14,10 @@ Nothing in this file is a commitment. Items may change, be re-prioritized, or be
 
 ## Versioning / compatibility strategy
 
-- ~~Decide whether to introduce n8n node versioning to support both NetSapiens 44.x (current stable) and 45.x+ (new OpenAPI spec), keeping existing workflows stable while enabling newer endpoints.~~ **Addressed** — v45-only operations are now auto-detected and tagged with "(v45+)" in the UI, with pre-flight version checks at runtime. No node versioning needed.
+- ~~Decide whether to introduce n8n node versioning to support both NetSapiens 44.x (current stable) and 45.x+ (new OpenAPI spec), keeping existing workflows stable while enabling newer endpoints.~~ **Addressed** — v45-only operations are auto-detected from a spec diff and carry an advisory "May require NetSapiens API v45+" hint. No node versioning needed. (The `(v45+)` dropdown suffix and blocking pre-flight check were removed in 0.2.5; the diff baseline was corrected to a real 44.4.10 core spec in 0.3.0.)
+- **Refresh the bundled specs on every NetSapiens upgrade, before upgrading.** A core stops serving its old spec the moment it upgrades, so a build-exact snapshot is unrecoverable afterwards. See `openapi/README.md`.
+- Consider raising the v44 baseline as the estate moves off 44.4.x, and whether the hint should name the actual minimum version rather than a flat "v45+" — the generator currently hardcodes `45`, which will be wrong once a 46 ships.
+- Consider whether operations absent from 44.3.x (but present in 44.4.10) warrant a distinct hint, since the current baseline treats all of 44.x as one floor.
 
 ## Feature ideas
 

@@ -1,5 +1,30 @@
 # Release Process
 
+## Local test build (before releasing)
+
+Produce an installable tarball without touching npm, GitHub, or any existing `npm link`:
+
+```bash
+npm run build && npm pack
+# -> n8n-nodes-netsapiens-<VERSION>.tgz in the project root
+```
+
+Install it into an n8n instance when ready:
+
+```bash
+cd ~/.n8n/nodes          # or your n8n custom-nodes directory
+npm install /path/to/n8n-nodes-netsapiens-<VERSION>.tgz
+# restart n8n
+```
+
+`npm pack` is inert — it only writes the `.tgz`. It does **not** publish, tag, or alter any
+`npm link` you already have pointing at a different node, so it is safe to run while another
+community node is linked for testing.
+
+To go back to a linked workflow later: `npm link` here, then
+`npm link n8n-nodes-netsapiens` in the n8n instance directory. Note that linking this package
+replaces any existing link for the same package name only — other packages are unaffected.
+
 ## Prerequisites
 
 - All changes committed and pushed to `main`

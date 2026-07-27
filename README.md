@@ -64,7 +64,7 @@ The node also includes custom **Authentication/JWT (JSON Web Token)** operations
 
 The node also includes a custom **Authentication/User Credentials -> Validate** operation. This operation validates a username and password against the NetSapiens OAuth2 token endpoint, returning a structured success or failure result without using the token for subsequent API calls. When using API Key credentials, you must provide OAuth2 Client ID and Client Secret separately.
 
-Operations that require NetSapiens API v45+ are tagged with "(v45+)" in the dropdown and include a pre-flight version check that prevents calling unsupported endpoints on older servers.
+Operations not present on NetSapiens 44.x carry the description hint "May require NetSapiens API v45+". This is advisory, not blocking — the node still attempts the call and reports version information if it fails.
 
 NetSapiens provides the [API JSON Schema](https://docs.ns-api.com/docs/download-full-api-json-schema-file) as part of their documentation, which this node uses to generate the basic node interface. The node also implements a number of overrides to handle NetSapiens-specific details and add additional functionality and affordances.
 
@@ -112,9 +112,11 @@ NetSapiens also provides an [MCP server](https://docs.ns-api.com/v45.0/docs/mcp-
 
 - **Minimum n8n version**: Developed and tested with version `2.0.3+` but will likely work with several prior versions.
 - **Tested with**: Local development via `n8n-node dev`
-- **Tested with**: NetSapiens Version 44.3.2
+- **Tested with**: NetSapiens Version 44.3.2, 44.4.10, and 45.0
 
-**Note:** The node uses the NetSapiens v45.0 OpenAPI spec and automatically identifies operations that are only available on v45+ servers. These operations are tagged with "(v45+)" in the dropdown and include a pre-flight version check. Operations from the original v2 spec work on both 44.x and 45.x servers. You can also use the Raw API Request option to call endpoints not yet implemented as dedicated operations.
+**Note:** The node is generated from the NetSapiens v45.0 OpenAPI spec and automatically identifies operations that are only available on v45+ servers, by diffing that spec against a build-exact 44.4.10 spec pulled from a live core. Those operations carry the advisory hint "May require NetSapiens API v45+"; everything else works on both 44.x and 45.x. You can also use the Raw API Request option to call endpoints not yet implemented as dedicated operations.
+
+Because the v44 baseline is a real core spec rather than an approximation, the hint is accurate against 44.4.10 in both directions — no operation is wrongly marked v45-only, and no v45-only operation is left unmarked. Servers on 44.3.x or earlier may still lack a small number of unflagged endpoints.
 
 ## Usage
 
@@ -145,7 +147,7 @@ Then set:
 From `n8n-nodes-netsapiens/`:
 
 - `npm install` installs dependencies.
-- `npm run generate` regenerates `generated/openapi.ts` from `openapi/NetSapiens.v2.3.1.0.openapi.json`.
+- `npm run generate` regenerates `generated/openapi.ts` from `openapi/netsapiens-api-v2-docs-v45.0.json`, using `openapi/netsapiens-api-v2-core-44.4.10.json` as the v44 baseline for version flagging. See `openapi/README.md` for spec provenance and how to refresh either file.
 - `npm run build` runs code generation and builds the node.
 - `npm run dev` runs the node in development mode directly, launching n8n, or:
 - Use `npm link` to link the node to n8n (and then `npm link n8n-nodes-netsapiens` in your n8n instance `config` directory and restart n8n).

@@ -153,8 +153,9 @@ function getSpecArg(argv) {
 	return undefined;
 }
 
-// const defaultSpecPath = path.join(packageRoot, 'openapi', 'NetSapiens.v2.3.1.0.openapi.json');
-const defaultSpecPath = path.join(packageRoot, 'openapi', 'netsapiens-api-v2-v45.0.json');
+// Generation target: the newest release we want the node to expose.
+// Sourced from the docs.ns-api.com v45.0 branch (see CLAUDE.md, "Docs-Site Specs").
+const defaultSpecPath = path.join(packageRoot, 'openapi', 'netsapiens-api-v2-docs-v45.0.json');
 const specArgValue = getSpecArg(process.argv.slice(2));
 const specPath = specArgValue
 	? path.resolve(packageRoot, specArgValue)
@@ -167,16 +168,30 @@ if (!fs.existsSync(specPath)) {
 
 const spec = JSON.parse(fs.readFileSync(specPath, 'utf8'));
 
-// Load the original (pre-v45) spec to identify v45-only endpoints
-const originalSpecPath = path.join(packageRoot, 'openapi', 'NetSapiens.v2.3.1.0.openapi.json');
-const originalSpec = fs.existsSync(originalSpecPath)
-	? JSON.parse(fs.readFileSync(originalSpecPath, 'utf8'))
+// v44 baseline used to decide which operations are v45-only.
+//
+// This MUST be a real v44 core spec, not the ancient NetSapiens.v2.3.1.0 spec that was used
+// here previously. 2.3.1.0 predates 44 by a wide margin, so every endpoint added between it and
+// 44.4.10 was being mislabelled "may require v45+" -- 65 operations that a live 44.4.10 core
+// actually serves (certificates, timeframes, number-filters, video, firebase, holidays, ...).
+//
+// netsapiens-api-v2-v44.4.10.json is build-exact, pulled from a live 44.4.10 core, and is the
+// conservative floor: anything absent from it gets flagged, so a false "v45+" warning is
+// preferred over silently offering an operation the server does not have.
+const baselineSpecPath = path.join(packageRoot, 'openapi', 'netsapiens-api-v2-core-44.4.10.json');
+const baselineSpec = fs.existsSync(baselineSpecPath)
+	? JSON.parse(fs.readFileSync(baselineSpecPath, 'utf8'))
 	: null;
 
-// Build set of "METHOD /normalized/path" from original spec
+if (!baselineSpec) {
+	// Without a baseline every operation would silently lose its version flag.
+	throw new Error(`v44 baseline spec not found at ${baselineSpecPath}`);
+}
+
+// Build set of "METHOD /normalized/path" from the v44 baseline spec
 const originalEndpoints = new Set();
-if (originalSpec?.paths) {
-	for (const [pathKey, pathItem] of Object.entries(originalSpec.paths)) {
+if (baselineSpec?.paths) {
+	for (const [pathKey, pathItem] of Object.entries(baselineSpec.paths)) {
 		const np = normalizePath(pathKey);
 		for (const methodKey of Object.keys(pathItem)) {
 			if (isHttpMethod(methodKey)) {

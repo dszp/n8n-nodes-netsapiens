@@ -4,6 +4,21 @@ All notable changes to the n8n-nodes-netsapiens project will be documented in th
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.0] - 2026-07-27
+
+### Fixed
+
+- **Corrected which operations are marked "May require NetSapiens API v45+".** The generator inferred v45-only status by diffing the target spec against `NetSapiens.v2.3.1.0.openapi.json` — a spec predating the 44 series by a wide margin — so every endpoint added between 2.3.1.0 and 44.4.x was wrongly flagged. Measured against a live 44.4.10 server, 65 operations carried a false "v45+" hint, including all of the certificates, timeframes, number-filters, video, firebase, and holidays families, plus `/domains/{domain}/transcriptions`, `/domains/{domain}/messagesessions`, `/domains/{domain}/sites/list`, and `/domains/{domain}/phonenumbers/count`. The baseline is now a build-exact 44.4.10 spec pulled from a live core, and flags verify clean in both directions against that server: no false "v45+" hints, and no v45-only operation left unmarked. Operations carrying the hint dropped from 199 to 134.
+- Removed the now-redundant `CountDevices` override that hand-patched a single instance of the above bug (added in 0.2.5).
+
+### Changed
+
+- **Regenerated from a current, officially-sourced v45.0 spec.** The node previously generated from an unofficial v45 spec file that was 11 operations adrift from NetSapiens' published v45.0 documentation branch. It now generates from `openapi/netsapiens-api-v2-docs-v45.0.json`, retrieved from `docs.ns-api.com/v45.0/openapi/netsapiens-api-v2.json`. Total operations: 482 → 481.
+- Added `openapi/README.md` documenting the provenance of every bundled spec, the two independent ways to obtain one (core-served and build-exact, vs. docs-branch and historical), and how to refresh them.
+- Bundled additional reference specs for cross-version comparison: build-exact 44.4.10 from a live core, plus the `docs.ns-api.com` v44.3, v44.4, and v45.0 branches.
+- Removed the superseded, unofficially-sourced `openapi/netsapiens-api-v2-v45.0.json`.
+- Corrected README statements that no longer matched behavior since 0.2.5: v45+ operations have not carried a `(v45+)` dropdown suffix nor a blocking pre-flight check since that release, and the documented code-generation source file was out of date.
+
 ## [0.2.7] - 2026-07-01
 
 ### Changed
