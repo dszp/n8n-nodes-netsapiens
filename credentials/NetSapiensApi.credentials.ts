@@ -137,10 +137,24 @@ export class NetSapiensApi implements ICredentialType {
 				},
 			},
 		},
+		// Not user-facing, and required for OAuth2 to work at all. n8n only runs
+		// preAuthentication for credentials that declare a hidden `expirable` property —
+		// CredentialsHelper.preAuthentication returns early when none exists, silently,
+		// so without this `_accessToken` is never populated and the OAuth2 `authenticate`
+		// below resolves to a bare "Bearer ". n8n stores the token here, reuses it across
+		// requests, and re-runs preAuthentication on a 401.
+		{
+			displayName: 'Access Token',
+			name: '_accessToken',
+			type: 'hidden',
+			typeOptions: { expirable: true, password: true },
+			default: '',
+		},
 	];
 
 	// For OAuth2, fetch an access token before the test request.
-	// This runs before authenticate + test, making the token available as _accessToken.
+	// Requires the hidden `_accessToken` expirable property above; without it n8n never
+	// calls this method.
 	async preAuthentication(
 		this: IHttpRequestHelper,
 		credentials: ICredentialDataDecryptedObject,
